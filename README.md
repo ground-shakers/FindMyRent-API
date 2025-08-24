@@ -9,6 +9,6 @@ This is the backend API for the FindMyRent application, which helps users find r
 - Image upload and management
 ### Technologies Used
 - FastAPI
-- MongoDB
+- SQLAlchemy
 - Pydantic
 - JWT for authentication
