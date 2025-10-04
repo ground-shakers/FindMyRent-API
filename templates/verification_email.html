@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7fa;
+        }
+        .container {
+            max-width: 600px;
+            margin: 40px auto;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 40px 20px;
+            text-align: center;
+            color: white;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .content h2 {
+            color: #333;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        .content p {
+            color: #666;
+            line-height: 1.6;
+            font-size: 16px;
+            margin-bottom: 25px;
+        }
+        .code-container {
+            background: #f8f9fa;
+            border: 2px dashed #667eea;
+            border-radius: 8px;
+            padding: 25px;
+            text-align: center;
+            margin: 30px 0;
+        }
+        .code {
+            font-size: 36px;
+            font-weight: bold;
+            color: #667eea;
+            letter-spacing: 8px;
+            font-family: 'Courier New', monospace;
+        }
+        .warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .warning p {
+            margin: 0;
+            color: #856404;
+            font-size: 14px;
+        }
+        .footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            color: #999;
+            font-size: 14px;
+        }
+        .footer a {
+            color: #667eea;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔐 Email Verification</h1>
+        </div>
+        <div class="content">
+            <h2>Verify Your Email Address</h2>
+            <p>Hello,</p>
+            <p>Thank you for signing up on FindMyRent! Please use the verification code below to complete your registration:</p>
+            
+            <div class="code-container">
+                <div class="code">{{CODE}}</div>
+            </div>
+            
+            <p>This code will expire in <strong>10 minutes</strong>.</p>
+            
+            <div class="warning">
+                <p>⚠️ If you didn't request this code, please ignore this email or contact support if you have concerns.</p>
+            </div>
+            
+            <p>Best regards,<br>The Security Team</p>
+        </div>
+        <div class="footer">
+            <p>This is an automated message, please do not reply.</p>
+            <p>Need help? <a href="mailto:dev@ground-shakers.xyz">Contact Support</a></p>
+        </div>
+    </div>
+</body>
+</html>

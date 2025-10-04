@@ -1,7 +1,21 @@
 [project]
 name = "findmyrent"
 version = "0.1.0"
-description = "Add your description here"
+description = "Backend API for the FindMyRent application"
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "beanie>=2.0.0",
+    "cloudinary>=1.44.1",
+    "fastapi-limiter>=0.1.6",
+    "fastapi[standard]>=0.116.1",
+    "httpx>=0.28.1",
+    "motor>=3.7.1",
+    "psycopg>=3.2.10",
+    "psycopg2>=2.9.10",
+    "pytz>=2025.2",
+    "redis>=6.4.0",
+    "requests>=2.32.5",
+    "sqlalchemy>=2.0.43",
+    "sqlmodel>=0.0.24",
+]
