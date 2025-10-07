@@ -1,5 +1,4 @@
-"""Defines the structure of the email verification request."""
-
+"""Schema definitions for verification requests and responses."""
 from pydantic import BaseModel, EmailStr
 
 
