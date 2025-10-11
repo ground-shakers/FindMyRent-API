@@ -116,7 +116,7 @@ async def send_verification_code(payload: EmailVerificationRequest, request: Req
         )
 
 
-@router.post("/api/verification/email/verify-code", status_code=status.HTTP_200_OK)
+@router.post("/verification/email/verify-code", status_code=status.HTTP_200_OK)
 @limiter.limit("5/minute")
 async def verify_code(payload: EmailVerificationCodeValidationRequest, request: Request):
     """Verify the code entered by the user."""
