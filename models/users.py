@@ -9,8 +9,6 @@ from .messages import Chat
 from .listings import Listing
 from .helpers import UserType
 
-from services.validation import is_phone_number_valid, is_email_valid
-
 
 class User(Document):
     """Base model for user-related entities.
@@ -20,28 +18,10 @@ class User(Document):
     email: Annotated[EmailStr, Field(max_length=50)]
     phone_number: Annotated[str, Field(serialization_alias="phoneNumber")]
     password: Annotated[str, Field(min_length=8, max_length=100)]
-    permissions: Annotated[List[str], Field(default=["me"])]
     is_active: Annotated[bool, Field(default=True, serialization_alias="isActive")]
     user_type: Annotated[UserType, Field(default=UserType.TENANT, serialization_alias="userType")]  # e.g., 'tenant', 'landlord', 'admin'
 
-    @field_validator("phone_number")
-    def validate_phone_number(cls, v: str) -> str:
-        """Validate phone number format."""
 
-        if not is_phone_number_valid(v):
-            raise ValueError("Invalid phone number")
-        return v
-    
-    
-    @field_validator("email")
-    def validate_email(cls, v: str) -> str:
-        """Validate email format."""
-
-        if not is_email_valid(v):
-            raise ValueError("Invalid email address")
-        return v
-    
-    
     class Settings:
         """Pydantic model settings."""
         is_root = True
@@ -68,3 +48,10 @@ class Admin(User):
     """Admin model representing a user with administrative privileges.
     """
     chats: Annotated[List[Link[Chat]], Field()]  # List of chats the user is part of
+
+
+class Permissions(Document):
+    """Model representing user permissions.
+    """
+    user_type: Annotated[str, Field(unique=True)]  # Unique name of the permission
+    permissions: Annotated[List[str], Field()]  # List of permissions for the user type

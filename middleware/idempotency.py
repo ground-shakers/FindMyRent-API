@@ -1,11 +1,13 @@
+"""Idempotency middleware for FindMyRent API using Redis."""
+
 import json
 import asyncio
 import base64
 import os
 from typing import Callable, Optional
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request
-from starlette.responses import Response, JSONResponse, PlainTextResponse
+from fastapi.requests import Request
+from fastapi.responses import Response, JSONResponse
 import redis.asyncio as redis
 
 

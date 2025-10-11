@@ -5,17 +5,22 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
-from fastapi_limiter import FastAPILimiter
 from middleware.idempotency import IdempotencyMiddleware
 
 from motor.motor_asyncio import AsyncIOMotorClient
 from beanie import init_beanie
+
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 
 from models.users import User, Admin, LandLord, Tenant
 from models.messages import Message, Chat
 from models.listings import Listing
 
 from dotenv import load_dotenv
+
+from routers import auth, users
 
 load_dotenv()
 
@@ -34,18 +39,19 @@ async def lifespan(app: FastAPI):
     redis_connection = redis.from_url(
         redis_url, encoding="utf-8", decode_responses=True
     )
-    await FastAPILimiter.init(redis_connection)
 
     yield
     client.close()
     await redis_connection.close()
 
+limiter = Limiter(key_func=get_remote_address)
 
 app = FastAPI(
     title="FindMyRent API",
     description="A comprehensive API for managing rental services, including tenant records, landlord profiles, and rental agreements.",
     lifespan=lifespan,
 )
+app.state.limiter = limiter
 
 app.add_middleware(
     CORSMiddleware,
@@ -59,3 +65,8 @@ app.add_middleware(
     ttl_seconds=3600,
     lock_ttl=10,
 )
+
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+app.include_router(auth.router)
+app.include_router(users.router)

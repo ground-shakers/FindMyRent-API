@@ -17,8 +17,31 @@ from redis import Redis
 
 from security.helpers import generate_verification_code
 
+from controllers.abstract_controller import send_phone_verification_request
 
-class VerificationService:
+
+"""Service for handling email verification."""
+
+from fastapi import status
+from fastapi.exceptions import HTTPException
+
+from models.helpers import ContentType
+
+from datetime import timedelta
+
+from .template import TemplateService
+from .email import EmailService
+
+from typing import Optional
+
+from redis import Redis
+
+from security.helpers import generate_verification_code
+
+from controllers.abstract_controller import send_phone_verification_request
+
+
+class EmailVerificationService:
     """Service for handling email verification."""
 
     def __init__(
@@ -37,19 +60,11 @@ class VerificationService:
 
     def send_verification_code(self, email: str) -> bool:
         """Generate and send verification code to email."""
-        # Check rate limiting
-        if not self._check_rate_limit(email):
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="Too many requests. Please try again later.",
-            )
+        # Note: Rate limiting is now handled by slowapi decorator at the route level
 
         # Generate and store code
         code = generate_verification_code()
         self._store_code(email, code)
-
-        # Update rate limit
-        self._update_rate_limit(email)
 
         # Send email
         html_content = self.template_service.render_verification_email(code, email)
@@ -91,20 +106,6 @@ class VerificationService:
         self._cleanup_verification(email)
         return True
 
-    def _check_rate_limit(self, email: str) -> bool:
-        """Check if email has exceeded rate limit."""
-        key = f"rate_limit:{email}"
-        count = self.redis.get(key)
-        return not (count and int(count) >= 3)
-
-    def _update_rate_limit(self, email: str):
-        """Update rate limit counter."""
-        key = f"rate_limit:{email}"
-        if self.redis.exists(key):
-            self.redis.incr(key)
-        else:
-            self.redis.setex(key, timedelta(hours=1), 1)
-
     def _store_code(self, email: str, code: str):
         """Store verification code in Redis."""
         key = f"verification:{email}"
@@ -113,7 +114,8 @@ class VerificationService:
     def _get_stored_code(self, email: str) -> Optional[str]:
         """Get stored verification code."""
         key = f"verification:{email}"
-        return self.redis.get(key)
+        code = self.redis.get(key)
+        return code if code else None
 
     def _check_attempts(self, email: str) -> bool:
         """Check if attempts limit exceeded."""
@@ -141,4 +143,3 @@ class VerificationService:
         """Clean up all verification-related keys."""
         self.redis.delete(f"verification:{email}")
         self.redis.delete(f"attempts:{email}")
-        self.redis.delete(f"rate_limit:{email}")

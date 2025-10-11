@@ -7,15 +7,16 @@ import os
 
 from dotenv import load_dotenv
 
-from fastapi import FastAPI, HTTPException, status, APIRouter
+from fastapi import HTTPException, status, APIRouter
 from fastapi.responses import JSONResponse
+from fastapi.requests import Request
 
 from redis import Redis
 from datetime import timedelta
 
 from pathlib import Path
 
-from services.verification import VerificationService
+from services.verification import EmailVerificationService
 from services.template import TemplateService
 from services.email import EmailService
 
@@ -24,6 +25,8 @@ from schema.verification import (
     EmailVerificationRequest,
     EmailVerificationCodeValidationRequest,
 )
+
+from middleware.rate_limiting import limiter
 
 load_dotenv()
 
@@ -63,7 +66,7 @@ email_service = EmailService(
 
 template_service = TemplateService(templates_dir=TEMPLATES_DIR)
 
-verification_service = VerificationService(
+verification_service = EmailVerificationService(
     redis_client=redis_client,
     email_service=email_service,
     template_service=template_service,
@@ -73,7 +76,8 @@ verification_service = VerificationService(
 
 
 @router.post("/verification/email", status_code=status.HTTP_200_OK)
-async def send_verification_code(request: EmailVerificationRequest):
+@limiter.limit("10/hour")
+async def send_verification_code(payload: EmailVerificationRequest, request: Request):
     """Send a verification code to the user's email."""
     try:
         redis_client.ping()
@@ -85,7 +89,7 @@ async def send_verification_code(request: EmailVerificationRequest):
         )
 
     try:
-        success = verification_service.send_verification_code(request.email)
+        success = verification_service.send_verification_code(payload.email)
 
         if not success:
             raise HTTPException(
@@ -97,7 +101,7 @@ async def send_verification_code(request: EmailVerificationRequest):
             status_code=status.HTTP_200_OK,
             content={
                 "message": "Verification code sent successfully",
-                "email": request.email,
+                "email": payload.email,
                 "expires_in_minutes": CODE_EXPIRY.seconds // 60,
             },
         )
@@ -113,7 +117,8 @@ async def send_verification_code(request: EmailVerificationRequest):
 
 
 @router.post("/api/verification/email/verify-code", status_code=status.HTTP_200_OK)
-async def verify_code(request: EmailVerificationCodeValidationRequest):
+@limiter.limit("5/minute")
+async def verify_code(payload: EmailVerificationCodeValidationRequest, request: Request):
     """Verify the code entered by the user."""
     try:
         redis_client.ping()
@@ -126,7 +131,7 @@ async def verify_code(request: EmailVerificationCodeValidationRequest):
 
     try:
         # Validate code format
-        submitted_code = request.code.strip()
+        submitted_code = payload.code.strip()
         if not submitted_code.isdigit() or len(submitted_code) != CODE_LENGTH:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -134,22 +139,19 @@ async def verify_code(request: EmailVerificationCodeValidationRequest):
             )
 
         # Verify code
-        verification_service.verify_code(request.email, submitted_code)
+        verification_service.verify_code(payload.email, submitted_code)
 
         return JSONResponse(
             status_code=status.HTTP_200_OK,
             content={
                 "message": "Email verified successfully",
-                "email": request.email,
+                "email": payload.email,
                 "verified": True,
             },
         )
-
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error(f"Unexpected error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An unexpected error occurred",
+            detail="Sorry we can't verify your email at the moment. Please try again later.",
         )
