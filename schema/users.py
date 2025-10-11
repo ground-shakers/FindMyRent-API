@@ -21,8 +21,8 @@ class CreateUserRequest(BaseModel):
     last_name: Annotated[str, Field(max_length=50, min_length=2, serialization_alias="lastName")]
     email: Annotated[EmailStr, Field(max_length=50)]
     phone_number: Annotated[str, Field(serialization_alias="phoneNumber")]
-    password: Annotated[str, Field(min_length=8, max_length=100)]
-    verify_password: Annotated[str, Field(min_length=8, max_length=100, serialization_alias="verifyPassword")]
+    password: Annotated[str, Field(min_length=8)]
+    verify_password: Annotated[str, Field(min_length=8, serialization_alias="verifyPassword")]
     user_type: Annotated[UserType, Field(default=UserType.TENANT, serialization_alias="userType")]
 
     @field_validator("phone_number")
@@ -93,3 +93,22 @@ class CreateUserRequest(BaseModel):
                 detail="Passwords do not match",
             )
         return self
+    
+    
+class CreateUserResponse(BaseModel):
+    """Describes the structure of the create user response."""
+
+    message: Annotated[str, Field(default="User created successfully")]
+    email: Annotated[EmailStr, Field()]
+    expires_in_minutes: Annotated[int, Field(serialization_alias="expiresInMinutes")]  # Time in minutes before the verification code expires
+    user_id: Annotated[str, Field(default="", serialization_alias="userId")]  # ID of the created user, if applicable
+    
+class UserInDB(BaseModel):
+    """Describes the structure of the user data stored in the database."""
+    
+    id: Annotated[str, Field(description="Unique identifier for the user")]
+    first_name: Annotated[str, Field(max_length=50, min_length=2, serialization_alias="firstName")]
+    last_name: Annotated[str, Field(max_length=50, min_length=2, serialization_alias="lastName")]
+    email: Annotated[EmailStr, Field(max_length=50)]
+    phone_number: Annotated[str, Field(serialization_alias="phoneNumber")]
+    user_type: Annotated[UserType, Field(default=UserType.TENANT, serialization_alias="userType")]  # e.g., 'tenant', 'landlord', 'admin'

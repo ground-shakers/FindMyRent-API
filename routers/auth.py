@@ -20,11 +20,12 @@ from services.verification import EmailVerificationService
 from services.template import TemplateService
 from services.email import EmailService
 
+from models.users import User
+from schema.users import UserInDB
 
-from schema.verification import (
-    EmailVerificationRequest,
-    EmailVerificationCodeValidationRequest,
-)
+from beanie.operators import And
+
+from schema.verification import EmailVerificationCodeValidationRequest, VerifiedEmailResponse
 
 from middleware.rate_limiting import limiter
 
@@ -75,51 +76,12 @@ verification_service = EmailVerificationService(
 )
 
 
-@router.post("/verification/email", status_code=status.HTTP_200_OK)
-@limiter.limit("10/hour")
-async def send_verification_code(payload: EmailVerificationRequest, request: Request):
-    """Send a verification code to the user's email."""
-    try:
-        redis_client.ping()
-    except Exception as e:
-        logger.error(f"Redis connection failed: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Service temporarily unavailable",
-        )
-
-    try:
-        success = verification_service.send_verification_code(payload.email)
-
-        if not success:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to send verification email",
-            )
-
-        return JSONResponse(
-            status_code=status.HTTP_200_OK,
-            content={
-                "message": "Verification code sent successfully",
-                "email": payload.email,
-                "expires_in_minutes": CODE_EXPIRY.seconds // 60,
-            },
-        )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Unexpected error: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An unexpected error occurred",
-        )
-
-
-@router.post("/verification/email/verify-code", status_code=status.HTTP_200_OK)
+@router.post("/verification/email", status_code=status.HTTP_200_OK, response_model=VerifiedEmailResponse)
 @limiter.limit("5/minute")
-async def verify_code(payload: EmailVerificationCodeValidationRequest, request: Request):
-    """Verify the code entered by the user."""
+async def verify_email_code(payload: EmailVerificationCodeValidationRequest, request: Request):
+    """This endpoint verifies the email verification code sent to the user's email address.
+    Once the code is verified, the user's account is activated.
+    """
     try:
         redis_client.ping()
     except Exception as e:
@@ -139,15 +101,28 @@ async def verify_code(payload: EmailVerificationCodeValidationRequest, request: 
             )
 
         # Verify code
-        verification_service.verify_code(payload.email, submitted_code)
+        success = verification_service.verify_code(payload.email, submitted_code)
 
-        return JSONResponse(
-            status_code=status.HTTP_200_OK,
-            content={
-                "message": "Email verified successfully",
-                "email": payload.email,
-                "verified": True,
-            },
+        if not success:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"detail": "Invalid verification code"},
+            )
+            
+        # Activate user account
+        user = await User.find_one(And(User.email == payload.email, User.is_active == False), with_children=True)
+
+        if not user:
+            return JSONResponse(
+                status_code=status.HTTP_404_NOT_FOUND,
+                content={"detail": "User not found or already verified"},
+            )
+            
+        user.is_active = True
+        await user.save()
+
+        return VerifiedEmailResponse(
+            user=UserInDB(**user.model_dump(exclude=["is_active", "password"])),  # Convert to UserInDB schema
         )
     except Exception as e:
         logger.error(f"Unexpected error: {str(e)}")

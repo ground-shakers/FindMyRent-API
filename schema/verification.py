@@ -1,6 +1,9 @@
 """Defines the structure of the email verification request."""
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
+from typing import Annotated
+
+from schema.users import UserInDB
 
 
 class EmailVerificationRequest(BaseModel):
@@ -30,3 +33,9 @@ class EmailVerificationCodeValidationResponse(BaseModel):
     message: str
     email: EmailStr
     verified: bool
+    
+
+class VerifiedEmailResponse(BaseModel):
+    """Describes the structure of the response once an email is verified successfully."""
+    message: Annotated[str, Field(default="Email verified successfully")]
+    user: Annotated[UserInDB, Field(description="Details of the user associated with the verified email")]  # User ID
