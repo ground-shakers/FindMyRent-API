@@ -17,6 +17,8 @@ from pymongo.errors import DuplicateKeyError
 
 from typing import Annotated
 
+from security.helpers import get_password_hash
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -51,6 +53,9 @@ async def create_user(payload: CreateUserRequest, request: Request, verification
                 status_code=status.HTTP_400_BAD_REQUEST,
                 content={"detail": "Invalid user type"},
             )
+            
+        # Hash the user's password before saving
+        new_user.password = get_password_hash(payload.password)
 
         # Save the new user to the database
         await new_user.save()

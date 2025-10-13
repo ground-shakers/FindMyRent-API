@@ -14,6 +14,8 @@ from fastapi import status
 
 from models.helpers import UserType
 
+from security.helpers import get_password_hash
+
 class CreateUserRequest(BaseModel):
     """Describes the structure of the create user request."""
 
@@ -90,7 +92,7 @@ class CreateUserRequest(BaseModel):
         ):
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="Passwords do not match",
+                detail={"message": "Passwords do not match"},
             )
         return self
     

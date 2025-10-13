@@ -15,6 +15,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
 from models.users import User, Admin, LandLord, Tenant
+from models.security import Permissions
 from models.messages import Message, Chat
 from models.listings import Listing
 
@@ -32,7 +33,7 @@ async def lifespan(app: FastAPI):
 
     await init_beanie(
         database=client[os.getenv("DATABASE_NAME")],
-        document_models=[User, Admin, LandLord, Tenant, Message, Chat, Listing],
+        document_models=[User, Admin, LandLord, Tenant, Message, Chat, Listing, Permissions],
     )
 
     redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")

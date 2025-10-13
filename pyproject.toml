@@ -5,6 +5,7 @@ description = "Backend API for the FindMyRent application"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "bcrypt==4.0.0",
     "beanie>=2.0.0",
     "clicksend-client>=5.0.78",
     "cloudinary>=1.44.1",
@@ -12,8 +13,10 @@ dependencies = [
     "fastapi[standard]>=0.116.1",
     "httpx>=0.28.1",
     "motor>=3.7.1",
+    "passlib>=1.7.4",
     "psycopg>=3.2.10",
     "psycopg2>=2.9.10",
+    "python-jose[cryptography]>=3.5.0",
     "pytz>=2025.2",
     "redis>=6.4.0",
     "requests>=2.32.5",

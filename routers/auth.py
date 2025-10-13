@@ -7,9 +7,10 @@ import os
 
 from dotenv import load_dotenv
 
-from fastapi import HTTPException, status, APIRouter
+from fastapi import HTTPException, status, APIRouter, Depends
 from fastapi.responses import JSONResponse
 from fastapi.requests import Request
+from fastapi.security import OAuth2PasswordRequestForm
 
 from redis import Redis
 from datetime import timedelta
@@ -21,13 +22,20 @@ from services.template import TemplateService
 from services.email import EmailService
 
 from models.users import User
+from models.security import Permissions
+
+from security.helpers import authenticate_user, create_access_token
+
 from schema.users import UserInDB
 
-from beanie.operators import And
+from beanie.operators import And, In
 
 from schema.verification import EmailVerificationCodeValidationRequest, VerifiedEmailResponse
+from schema.security import Token
 
 from middleware.rate_limiting import limiter
+
+from typing import Annotated
 
 load_dotenv()
 
@@ -108,7 +116,7 @@ async def verify_email_code(payload: EmailVerificationCodeValidationRequest, req
                 status_code=status.HTTP_400_BAD_REQUEST,
                 content={"detail": "Invalid verification code"},
             )
-            
+
         # Activate user account
         user = await User.find_one(And(User.email == payload.email, User.is_active == False), with_children=True)
 
@@ -117,7 +125,7 @@ async def verify_email_code(payload: EmailVerificationCodeValidationRequest, req
                 status_code=status.HTTP_404_NOT_FOUND,
                 content={"detail": "User not found or already verified"},
             )
-            
+
         user.is_active = True
         await user.save()
 
@@ -128,5 +136,37 @@ async def verify_email_code(payload: EmailVerificationCodeValidationRequest, req
         logger.error(f"Unexpected error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Sorry we can't verify your email at the moment. Please try again later.",
+            detail={"message": "Sorry we can't verify your email at the moment. Please try again later."},
         )
+
+
+@router.post("/login", response_model=Token)
+async def login_for_access_token(
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+):
+    user = await authenticate_user(form_data.username, form_data.password)
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"message": "Incorrect username or password"},
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+        
+    user_type_in_db = await Permissions.find_one(Permissions.user_type == user.user_type.value)
+
+    if not user_type_in_db:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"message": "User does not have permissions assigned."},
+        )
+
+    access_token_expires = timedelta(
+        minutes=int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
+    )
+    access_token = create_access_token(
+        data={"sub": str(user.id), "scopes": user_type_in_db.permissions},
+        expires_delta=access_token_expires,
+    )
+
+    return Token(access_token=access_token.decode("utf-8"), token_type="Bearer")
