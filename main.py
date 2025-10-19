@@ -27,7 +27,9 @@ load_dotenv()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    client = AsyncIOMotorClient("mongodb://localhost:27017")  # * Connect to MongoDB
+    client = AsyncIOMotorClient(
+        os.getenv("DATABASE_CONNECTION_STRING")
+    )  # * Connect to MongoDB
 
     await init_beanie(
         database=client[os.getenv("DATABASE_NAME")],
