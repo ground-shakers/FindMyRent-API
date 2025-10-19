@@ -5,15 +5,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
+import redis.asyncio
+
 from middleware.idempotency import IdempotencyMiddleware
 from middleware.rate_limiting import RateLimitMiddleware
 
 from motor.motor_asyncio import AsyncIOMotorClient
 from beanie import init_beanie
-
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.errors import RateLimitExceeded
-from slowapi.util import get_remote_address
 
 from models.users import User, Admin, LandLord
 from models.security import Permissions
@@ -27,7 +25,6 @@ from routers import auth, users
 load_dotenv()
 
 
-# noinspection PyUnusedLocal,PyShadowingNames
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     client = AsyncIOMotorClient("mongodb://localhost:27017")  # * Connect to MongoDB
@@ -38,7 +35,7 @@ async def lifespan(app: FastAPI):
     )
 
     redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-    redis_connection = redis.from_url(
+    redis_connection = await redis.asyncio.from_url(
         redis_url, encoding="utf-8", decode_responses=True
     )
 
@@ -46,14 +43,11 @@ async def lifespan(app: FastAPI):
     client.close()
     await redis_connection.close()
 
-limiter = Limiter(key_func=get_remote_address)
-
 app = FastAPI(
     title="FindMyRent API",
     description="A comprehensive API for managing rental services, including tenant records, landlord profiles, and rental agreements.",
     lifespan=lifespan,
 )
-app.state.limiter = limiter
 
 app.add_middleware(
     CORSMiddleware,
@@ -72,8 +66,6 @@ app.add_middleware(
     requests_per_minute=100,  # 100 requests per minute
     bucket_capacity=120,  # Allow small bursts
 )
-
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.include_router(auth.router)
 app.include_router(users.router)

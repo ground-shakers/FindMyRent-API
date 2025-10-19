@@ -6,34 +6,32 @@ from typing import Annotated, Literal, Optional
 
 
 class PhoneCarrierDetails(BaseModel):
-    name: Annotated[str, Field()]  # Carrier name
-    line_type: Annotated[str, Field()]  # Line type (e.g., mobile, landline)
-    mcc: Annotated[str, Field()]  # Mobile Country Code
-    mnc: Annotated[str, Field()]  # Mobile Network Code
+    name: Annotated[Optional[str], Field()]  # Carrier name
+    line_type: Annotated[Optional[str], Field()]  # Line type (e.g., mobile, landline)
+    mcc: Annotated[Optional[str], Field()]  # Mobile Country Code
+    mnc: Annotated[Optional[str], Field()]  # Mobile Network Code
 
 
 class PhoneLocationDetails(BaseModel):
-    country_name: Annotated[str, Field(max_length=56)]
-    country_code: Annotated[str, Field(max_length=4)]  # Country code that follows
+    country_name: Annotated[Optional[str], Field(max_length=56)]
+    country_code: Annotated[Optional[str], Field(max_length=4)]  # Country code that follows
     country_prefix: Annotated[
         str, Field()
     ]  # Phone number prefixes inclusive of the + at the front e.g. +264
-    region: Annotated[str, Field(max_length=100)]
-    city: Annotated[str, Field(max_length=100)]
-    timezone: Annotated[
-        str, Field(max_length=50)
-    ]  # Timezone in TZ database format e.g. Africa/Windhoek
+    region: Annotated[Optional[str], Field(max_length=100)]
+    city: Annotated[Optional[str], Field(max_length=100)]
+    timezone: Annotated[Optional[str], Field(max_length=50)]  # Timezone in TZ database format e.g. Africa/Windhoek
 
 
 class PhoneMessagingDetails(BaseModel):
-    sms_domain: Annotated[str, Field()]  # SMS domain
-    sms_email: Annotated[str, Field()]  # SMS email address
+    sms_domain: Annotated[Optional[str], Field()]  # SMS domain
+    sms_email: Annotated[Optional[str], Field()]  # SMS email address
 
 
 class PhoneValidityDetails(BaseModel):
     is_valid: Annotated[bool, Field()]  # Whether the phone number is valid
-    line_status: Annotated[str, Field()]  # Line status (active, inactive, unknown)
-    is_voip: Annotated[bool, Field()]  # Whether the phone number is a VoIP number
+    line_status: Annotated[Optional[str], Field()]  # Line status (active, inactive, unknown)
+    is_voip: Annotated[Optional[bool], Field()]  # Whether the phone number is a VoIP number
     minimum_age: Annotated[Optional[int], Field()]  # Minimum age of the phone number in years, null if not available
 
 
@@ -46,10 +44,8 @@ class PhoneRiskDetails(BaseModel):
     risk_level: Annotated[
         Literal["low", "medium", "high"], Field()
     ]  # Risk level (low, medium, high)
-    is_disposable: Annotated[bool, Field()]  # Whether the phone number is disposable
-    is_abuse_detected: Annotated[
-        bool, Field()
-    ]  # Whether abuse has been detected on the phone number
+    is_disposable: Annotated[Optional[bool], Field()]  # Whether the phone number is disposable
+    is_abuse_detected: Annotated[Optional[bool], Field()]  # Whether abuse has been detected on the phone number
 
 
 class PhoneBreachesDetails(BaseModel):
@@ -62,7 +58,7 @@ class PhoneBreachesDetails(BaseModel):
     date_last_breached: Annotated[
         Optional[str], Field()
     ]  # Date of last breach in YYYY-MM-DD format, null if none
-    breached_domains: Annotated[list, Field()]  # List of breached domains
+    breached_domains: Annotated[Optional[list], Field()]  # List of breached domains
 
 
 class PhoneNumberCountryDetails(BaseModel):

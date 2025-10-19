@@ -4,7 +4,7 @@ import json
 import asyncio
 import base64
 import os
-from typing import Callable, Optional
+from typing import Callable
 from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi.requests import Request
 from fastapi.responses import Response, JSONResponse
@@ -12,6 +12,8 @@ import redis.asyncio as redis
 
 
 class IdempotencyMiddleware(BaseHTTPMiddleware):
+    """Custom Middleware to handle idempotency for requests.
+    """ 
     def __init__(
         self,
         app,

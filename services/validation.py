@@ -1,11 +1,11 @@
 """Contains all the logic for controllers relating to validation of details
 """
 
+import logging
+
 from dotenv import load_dotenv
 
 from schema.abstract import (
-    ValidatePhoneNumberResponse,
-    PhoneNumberCountryDetails,
     PhoneNumberFormat,
     ValidateEmailResponse,
     EmailValidationNested,
@@ -26,6 +26,9 @@ from fastapi import status
 from controllers.abstract_controller import send_validate_email_request, send_phone_verification_request
 
 load_dotenv()
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def is_phone_number_valid(phone_number: str) -> tuple[bool, str]:
     """Validate `phone_number` with `AbstractAPIController` and return
@@ -80,14 +83,16 @@ def is_phone_number_valid(phone_number: str) -> tuple[bool, str]:
 
         return True, "Valid phone number"
     except ValidationError as e:
+        logger.error(f"Got a validation error for phone number validation response: {e}")
         raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Sorry we can't validate your phone number right now. Try again later",
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"We could not validate your phone number. Make sure the number is correct and try again.",
         )
     except Exception as e:
+        logger.error(f"Unexpected error occurred: {e}") 
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Sorry we can't validate your phone number right now. Try again later",
+            detail="Sorry we can't validate your phone number right now. Try again later.",
         )
 
 
