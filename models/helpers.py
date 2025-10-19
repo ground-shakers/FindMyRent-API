@@ -4,7 +4,6 @@ from enum import Enum
 
 class UserType(str, Enum):
     """Enumeration of user types."""
-    TENANT = "tenant"
     LANDLORD = "landlord"
     ADMIN = "admin"
 

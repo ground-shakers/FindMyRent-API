@@ -14,8 +14,6 @@ from fastapi import status
 
 from models.helpers import UserType
 
-from security.helpers import get_password_hash
-
 class CreateUserRequest(BaseModel):
     """Describes the structure of the create user request."""
 
@@ -25,7 +23,6 @@ class CreateUserRequest(BaseModel):
     phone_number: Annotated[str, Field(serialization_alias="phoneNumber")]
     password: Annotated[str, Field(min_length=8)]
     verify_password: Annotated[str, Field(min_length=8, serialization_alias="verifyPassword")]
-    user_type: Annotated[UserType, Field(default=UserType.TENANT, serialization_alias="userType")]
 
     @field_validator("phone_number")
     def validate_phone_number(cls, v: str) -> str:
@@ -101,10 +98,10 @@ class CreateUserResponse(BaseModel):
     """Describes the structure of the create user response."""
 
     message: Annotated[str, Field(default="User created successfully")]
-    email: Annotated[EmailStr, Field()]
-    expires_in_minutes: Annotated[int, Field(serialization_alias="expiresInMinutes")]  # Time in minutes before the verification code expires
-    user_id: Annotated[str, Field(default="", serialization_alias="userId")]  # ID of the created user, if applicable
-    
+    email: Annotated[EmailStr, Field(description="Email address the verification code was sent to")]
+    expires_in_minutes: Annotated[int, Field(serialization_alias="expiresInMinutes", description="Time in minutes before the verification code expires")]  # Time in minutes before the verification code expires
+    user_id: Annotated[str, Field(default="", serialization_alias="userId", max_length=24, min_length=24, description="ID of the created user")]  # ID of the created user
+
 class UserInDB(BaseModel):
     """Describes the structure of the user data stored in the database."""
     
@@ -113,4 +110,4 @@ class UserInDB(BaseModel):
     last_name: Annotated[str, Field(max_length=50, min_length=2, serialization_alias="lastName")]
     email: Annotated[EmailStr, Field(max_length=50)]
     phone_number: Annotated[str, Field(serialization_alias="phoneNumber")]
-    user_type: Annotated[UserType, Field(default=UserType.TENANT, serialization_alias="userType")]  # e.g., 'tenant', 'landlord', 'admin'
+    user_type: Annotated[UserType, Field(serialization_alias="userType")]  # e.g., 'tenant', 'landlord', 'admin'

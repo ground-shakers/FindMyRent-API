@@ -17,6 +17,7 @@ dependencies = [
     "psycopg>=3.2.10",
     "psycopg2>=2.9.10",
     "python-jose[cryptography]>=3.5.0",
+    "python-multipart>=0.0.20",
     "pytz>=2025.2",
     "redis>=6.4.0",
     "requests>=2.32.5",

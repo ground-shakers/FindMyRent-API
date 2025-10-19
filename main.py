@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from middleware.idempotency import IdempotencyMiddleware
+from middleware.rate_limiting import RateLimitMiddleware
 
 from motor.motor_asyncio import AsyncIOMotorClient
 from beanie import init_beanie
@@ -14,7 +15,7 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
-from models.users import User, Admin, LandLord, Tenant
+from models.users import User, Admin, LandLord
 from models.security import Permissions
 from models.messages import Message, Chat
 from models.listings import Listing
@@ -33,7 +34,7 @@ async def lifespan(app: FastAPI):
 
     await init_beanie(
         database=client[os.getenv("DATABASE_NAME")],
-        document_models=[User, Admin, LandLord, Tenant, Message, Chat, Listing, Permissions],
+        document_models=[User, Admin, LandLord, Message, Chat, Listing, Permissions],
     )
 
     redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
@@ -65,6 +66,11 @@ app.add_middleware(
     IdempotencyMiddleware,
     ttl_seconds=3600,
     lock_ttl=10,
+)
+app.add_middleware(
+    RateLimitMiddleware,
+    requests_per_minute=100,  # 100 requests per minute
+    bucket_capacity=120,  # Allow small bursts
 )
 
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)

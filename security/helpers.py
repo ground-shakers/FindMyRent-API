@@ -20,7 +20,7 @@ from jose.exceptions import ExpiredSignatureError
 from pydantic import ValidationError
 from typing import Annotated
 
-from schema.security import TokenData
+from schema.security import TokenData, RefreshTokenData
 
 from models.users import User
 
@@ -88,6 +88,23 @@ async def get_user(username: str) -> User | None:
     return user_in_db
 
 
+async def get_user_by_id(user_id: str) -> User | None:
+    """
+    Fetches a user from the database by their ID.
+
+    Args:
+        user_id (str): The ID of the user to fetch.
+
+    Returns:
+        User | None: The user object if found, None otherwise.
+    """
+    try:
+        user_in_db = await User.get(user_id, with_children=True)
+        return user_in_db
+    except Exception:
+        return None
+
+
 async def authenticate_user(username: str, password: str) -> User | bool:
     """Authenticates a user by their username and password.
 
@@ -134,6 +151,90 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> b
     )
 
     return encoded_jwe
+
+
+def create_refresh_token(user_id: str, token_family: str) -> bytes:
+    """Creates a new refresh token with unique JTI for replay protection.
+
+    Args:
+        user_id (str): The user ID.
+        token_family (str): Token family for refresh token rotation.
+
+    Returns:
+        bytes: The encoded JWE refresh token.
+    """
+    
+    # Generate unique token ID for replay protection
+    token_jti = secrets.token_urlsafe(32)
+    
+    refresh_token_data = {
+        "user_id": user_id,
+        "token_family": token_family,
+        "jti": token_jti,  # Unique token identifier
+        "issued_at": datetime.now(timezone.utc).timestamp(),
+        "type": "refresh"
+    }
+    
+    # Refresh tokens have longer expiry
+    refresh_token_expiry_days = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
+    expire = datetime.now(timezone.utc) + timedelta(days=refresh_token_expiry_days)
+    refresh_token_data.update({"exp": expire.timestamp()})
+
+    refresh_token_data = json.dumps(refresh_token_data).encode("utf-8")
+
+    #* Create a JWE refresh token
+    encoded_jwe = jwe.encrypt(
+        refresh_token_data, os.getenv("SECRET_KEY"), algorithm="dir", encryption="A256GCM"
+    )
+
+    return encoded_jwe
+
+
+def decode_refresh_token(refresh_token: str) -> RefreshTokenData | None:
+    """Decode and validate a refresh token.
+
+    Args:
+        refresh_token (str): The refresh token to decode.
+
+    Returns:
+        RefreshTokenData | None: Token data if valid, None if invalid.
+    """
+    try:
+        #* Decrypt the JWE token
+        token_bytes = refresh_token.encode("utf-8")
+        payload_bytes = jwe.decrypt(token_bytes, os.getenv("SECRET_KEY"))
+        payload: dict = json.loads(payload_bytes)        # Validate token type
+        if payload.get("type") != "refresh":
+            return None
+
+        user_id = payload.get("user_id")
+        token_family = payload.get("token_family")
+        jti = payload.get("jti")  # Unique token identifier
+        issued_at = payload.get("issued_at")
+        exp = payload.get("exp")
+
+        if not all([user_id, token_family, jti, issued_at, exp]):
+            return None
+
+        #* Validate that the token has not expired
+        if datetime.now(timezone.utc).timestamp() > exp:
+            return None
+
+        return RefreshTokenData(
+            user_id=user_id,
+            token_family=token_family,
+            jti=jti,
+            issued_at=issued_at
+        )
+
+        return RefreshTokenData(
+            user_id=user_id,
+            token_family=token_family,
+            jti=jti,
+            issued_at=issued_at
+        )
+    except Exception:
+        return None
 
 
 async def get_current_user(
@@ -226,7 +327,7 @@ async def get_current_active_user(
         User: The current active user.
     """
     
-    if not current_user.active:
+    if not current_user.is_active:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail={"message": "Account does not exist"}
         )

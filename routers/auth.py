@@ -4,6 +4,7 @@ Auth router for handling user authentication and authorization related endpoints
 
 import logging
 import os
+import secrets
 
 from dotenv import load_dotenv
 
@@ -20,20 +21,25 @@ from pathlib import Path
 from services.verification import EmailVerificationService
 from services.template import TemplateService
 from services.email import EmailService
+from security.refresh_token import get_secure_refresh_token_service, SecureRefreshTokenService
 
 from models.users import User
 from models.security import Permissions
 
-from security.helpers import authenticate_user, create_access_token
+from security.helpers import (
+    authenticate_user, 
+    create_access_token, 
+    create_refresh_token,
+    decode_refresh_token,
+    get_user_by_id
+)
 
 from schema.users import UserInDB
 
 from beanie.operators import And, In
 
 from schema.verification import EmailVerificationCodeValidationRequest, VerifiedEmailResponse
-from schema.security import Token
-
-from middleware.rate_limiting import limiter
+from schema.security import Token, TokenPair, RefreshTokenRequest
 
 from typing import Annotated
 
@@ -85,7 +91,6 @@ verification_service = EmailVerificationService(
 
 
 @router.post("/verification/email", status_code=status.HTTP_200_OK, response_model=VerifiedEmailResponse)
-@limiter.limit("5/minute")
 async def verify_email_code(payload: EmailVerificationCodeValidationRequest, request: Request):
     """This endpoint verifies the email verification code sent to the user's email address.
     Once the code is verified, the user's account is activated.
@@ -140,10 +145,11 @@ async def verify_email_code(payload: EmailVerificationCodeValidationRequest, req
         )
 
 
-@router.post("/login", response_model=Token)
+@router.post("/login", response_model=TokenPair)
 async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
 ):
+    """Login endpoint that returns both access and refresh tokens."""
     user = await authenticate_user(form_data.username, form_data.password)
 
     if not user:
@@ -161,6 +167,7 @@ async def login_for_access_token(
             detail={"message": "User does not have permissions assigned."},
         )
 
+    # Create access token
     access_token_expires = timedelta(
         minutes=int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
     )
@@ -169,4 +176,134 @@ async def login_for_access_token(
         expires_delta=access_token_expires,
     )
 
-    return Token(access_token=access_token.decode("utf-8"), token_type="Bearer")
+    # Create refresh token
+    token_family = secrets.token_urlsafe(32)  # Generate unique token family
+    refresh_token = create_refresh_token(str(user.id), token_family)
+
+    logger.info(f"User {user.email} logged in successfully")
+
+    return TokenPair(
+        access_token=access_token.decode("utf-8"),
+        refresh_token=refresh_token.decode("utf-8"),
+        token_type="Bearer",
+        expires_in=int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES")) * 60  # Convert to seconds
+    )
+
+
+@router.post("/refresh", response_model=TokenPair)
+async def refresh_access_token(
+    payload: RefreshTokenRequest,
+    secure_service: Annotated[SecureRefreshTokenService, Depends(get_secure_refresh_token_service)]
+):
+    """Refresh endpoint to get a new access token using a refresh token."""
+    
+    # Decode and validate refresh token
+    refresh_token_data = decode_refresh_token(payload.refresh_token)
+    
+    if not refresh_token_data:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"message": "Invalid or expired refresh token"},
+        )
+    
+    # Check if token has been used (replay protection)
+    if secure_service.is_token_used(refresh_token_data.jti):
+        # Token has been used - this is a replay attack or token theft
+        # Invalidate the entire token family as a security measure
+        secure_service.invalidate_token_family(refresh_token_data.token_family)
+        
+        logger.warning(f"Replay attack detected for user {refresh_token_data.user_id}, token family {refresh_token_data.token_family}")
+        
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"message": "Token has already been used. All sessions invalidated for security."},
+        )
+    
+    # Check if token family is still valid
+    if not secure_service.is_token_family_valid(refresh_token_data.token_family):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"message": "Token family has been invalidated"},
+        )
+    
+    # Mark this token as used (one-time use enforcement)
+    secure_service.mark_token_as_used(refresh_token_data.jti)
+    
+    # Get user by ID
+    user = await get_user_by_id(refresh_token_data.user_id)
+    if not user or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"message": "User not found"},
+        )
+    
+    # Get user permissions
+    user_type_in_db = await Permissions.find_one(Permissions.user_type == user.user_type.value)
+    if not user_type_in_db:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"message": "User does not have permissions assigned."},
+        )
+    
+    # Create new access token
+    access_token_expires = timedelta(
+        minutes=int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
+    )
+    access_token = create_access_token(
+        data={"sub": str(user.id), "scopes": user_type_in_db.permissions},
+        expires_delta=access_token_expires,
+    )
+    
+    # Create new refresh token with same family for rotation
+    new_refresh_token = create_refresh_token(str(user.id), refresh_token_data.token_family)
+    
+    logger.info(f"Tokens refreshed for user {user.email}")
+    
+    return TokenPair(
+        access_token=access_token.decode("utf-8"),
+        refresh_token=new_refresh_token.decode("utf-8"),
+        token_type="Bearer",
+        expires_in=int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES")) * 60  # Convert to seconds
+    )
+
+
+@router.post("/logout")
+async def logout(
+    payload: RefreshTokenRequest,
+    secure_service: Annotated[SecureRefreshTokenService, Depends(get_secure_refresh_token_service)]
+):
+    """Logout endpoint that revokes the refresh token."""
+    
+    # Decode refresh token to get user info
+    refresh_token_data = decode_refresh_token(payload.refresh_token)
+    
+    if refresh_token_data:
+        # Mark token as used to prevent further use
+        secure_service.mark_token_as_used(refresh_token_data.jti)
+        logger.info(f"User {refresh_token_data.user_id} logged out")
+    
+    return {"message": "Successfully logged out"}
+
+
+@router.post("/logout-all")
+async def logout_all_devices(
+    payload: RefreshTokenRequest,
+    secure_service: Annotated[SecureRefreshTokenService, Depends(get_secure_refresh_token_service)]
+):
+    """Logout from all devices by revoking all refresh tokens for the user."""
+    
+    # Decode refresh token to get user info
+    refresh_token_data = decode_refresh_token(payload.refresh_token)
+    
+    if not refresh_token_data:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"message": "Invalid refresh token"},
+        )
+    
+    # Revoke all refresh tokens for the user
+    secure_service.revoke_all_user_tokens(refresh_token_data.user_id)
+    
+    logger.info(f"All devices logged out for user {refresh_token_data.user_id}")
+    
+    return {"message": "Successfully logged out from all devices"}

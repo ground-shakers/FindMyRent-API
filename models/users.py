@@ -20,7 +20,7 @@ class User(Document):
     phone_number: Annotated[str, Field(serialization_alias="phoneNumber")]
     password: Annotated[str, Field(min_length=8)]
     is_active: Annotated[bool, Field(default=False, serialization_alias="isActive")]
-    user_type: Annotated[UserType, Field(default=UserType.TENANT, serialization_alias="userType")]  # e.g., 'tenant', 'landlord', 'admin'
+    user_type: Annotated[UserType, Field(serialization_alias="userType")]  # e.g., 'tenant', 'landlord', 'admin'
 
     @field_serializer("id")
     def convert_pydantic_object_id_to_string(self, id: PydanticObjectId):
@@ -29,19 +29,6 @@ class User(Document):
     class Settings:
         """Pydantic model settings."""
         is_root = True
-
-
-class Tenant(User):
-    """Tenant model representing a user who rents a property.
-    """
-    chats: Annotated[List[Link[Chat]], Field(default=[])]  # List of chats the user is part of
-    verified: Annotated[bool, Field(default=False)]
-    kyc_verified: Annotated[bool, Field(default=False)]  # Know Your Customer verification status
-
-    @field_serializer("id")
-    def convert_pydantic_object_id_to_string(self, id: PydanticObjectId):
-        return str(id)
-
 
 class LandLord(User):
     """Landlord model representing a user who owns and rents out properties.
