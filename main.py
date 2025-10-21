@@ -3,8 +3,6 @@ import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from contextlib import asynccontextmanager
 
 import redis.asyncio
@@ -22,7 +20,7 @@ from models.listings import Listing
 
 from dotenv import load_dotenv
 
-from routers import auth, users
+from routers import auth, users, kyc
 
 load_dotenv()
 
@@ -38,10 +36,7 @@ async def lifespan(app: FastAPI):
         document_models=[User, Admin, LandLord, Message, Chat, Listing, Permissions],
     )
 
-    redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-    redis_connection = await redis.asyncio.from_url(
-        redis_url, encoding="utf-8", decode_responses=True
-    )
+    redis_connection = await redis.asyncio.Redis()
 
     yield
     client.close()
@@ -53,7 +48,6 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-app.add_middleware(HTTPSRedirectMiddleware)  # Redirect HTTP to HTTPS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -62,16 +56,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.add_middleware(
-    RateLimitMiddleware,
-    requests_per_minute=100,  # 100 requests per minute
-    bucket_capacity=120,  # Allow small bursts
-)
-app.add_middleware(
     IdempotencyMiddleware,
     ttl_seconds=3600,
     lock_ttl=10,
 )
-app.add_middleware(GZipMiddleware, minimum_size=500) # Compress responses larger than 500 bytes
+app.add_middleware(
+    RateLimitMiddleware,
+    requests_per_minute=100,  # 100 requests per minute
+    bucket_capacity=120,  # Allow small bursts
+)
 
 app.include_router(auth.router)
 app.include_router(users.router)
+app.include_router(kyc.router)
