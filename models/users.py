@@ -19,7 +19,7 @@ class User(Document):
     email: Annotated[EmailStr, Indexed(index_type=pymongo.TEXT, unique=True), Field(max_length=50)]
     phone_number: Annotated[str, Field(serialization_alias="phoneNumber")]
     password: Annotated[str, Field(min_length=8)]
-    is_active: Annotated[bool, Field(default=False, serialization_alias="isActive")]
+    is_active: Annotated[bool, Field(default=True, serialization_alias="isActive")]
     user_type: Annotated[UserType, Field(serialization_alias="userType")]  # e.g., 'tenant', 'landlord', 'admin'
 
     @field_serializer("id")

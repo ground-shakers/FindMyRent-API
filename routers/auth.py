@@ -201,7 +201,7 @@ async def verify_email_code(payload: EmailVerificationCodeValidationRequest):
         # Verify user account
         user = await LandLord.find_one(And(LandLord.email == payload.email, LandLord.verified == False))
 
-        if not user or user.is_active == False:
+        if not user:
             return JSONResponse(
                 status_code=status.HTTP_404_NOT_FOUND,
                 content={"detail": "User not found"},
