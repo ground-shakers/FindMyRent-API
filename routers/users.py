@@ -1,13 +1,10 @@
 import logging
 
-from fastapi import APIRouter, status, Depends, HTTPException, Form, UploadFile
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, status, Depends, HTTPException, Form, UploadFile, BackgroundTasks
 
 from schema.users import CreateUserRequest, CreateUserResponse
 
 from models.users import LandLord
-
-from fastapi.requests import Request
 
 from services.verification import get_email_verification_service, EmailVerificationService
 
@@ -28,7 +25,7 @@ router = APIRouter(
 )
 
 @router.post("", response_model=CreateUserResponse, status_code=status.HTTP_201_CREATED)
-async def create_user(payload: CreateUserRequest, request: Request, verification_service: Annotated[EmailVerificationService, Depends(get_email_verification_service)]):
+async def create_user(payload: CreateUserRequest, verification_service: Annotated[EmailVerificationService, Depends(get_email_verification_service)], background_tasks: BackgroundTasks):
     """This endpoint creates a new user in the system and sends a verification code to their email.
     User accounts are created in an inactive state and must be verified via the code sent to their email address.
     Only 'tenant' and 'landlord' user types can be created via this endpoint.
@@ -49,14 +46,9 @@ async def create_user(payload: CreateUserRequest, request: Request, verification
         await new_user.save()
         logger.info(f"Saved new inactive user to database: {new_user.email}")
 
-        success = verification_service.send_verification_code(new_user.email)
-
-        if not success:
-            logger.error(f"Failed to send verification email to: {new_user.email}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to send verification email",
-            )
+        logger.info(f"Sending verification code to email: {new_user.email} with user ID: {str(new_user.id)}")
+        
+        background_tasks.add_task(verification_service.send_verification_code, new_user.email) # Send verification code in background
 
         logger.info(f"Verification code sent to email: {new_user.email} with user ID: {str(new_user.id) if new_user.id else ''}")
         return CreateUserResponse(

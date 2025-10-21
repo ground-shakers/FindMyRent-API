@@ -39,16 +39,6 @@ class CreateUserRequest(BaseModel):
             )
         return v
 
-    @field_validator("email")
-    def validate_email(cls, v: str) -> str:
-        """Validate email format."""
-
-        if not is_email_valid(v):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid email address"
-            )
-        return v
-
     # * Validate the password to ensure it has at least one uppercase letter,
     # * one special character, one lowercase letter, and one number
     @field_validator("password")
