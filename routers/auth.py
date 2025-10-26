@@ -2,13 +2,14 @@
 Auth router for handling user authentication and authorization related endpoints.
 """
 
-import logging
 import os
 import secrets
 
 from dotenv import load_dotenv
 
-from fastapi import HTTPException, status, APIRouter, Depends
+from utils.logger import logger
+
+from fastapi import HTTPException, status, APIRouter, Depends, BackgroundTasks
 from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
 
@@ -48,10 +49,6 @@ from schema.security import TokenPair, RefreshTokenRequest
 from typing import Annotated
 
 load_dotenv()
-
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/api/v1/auth",
@@ -95,7 +92,7 @@ verification_service = EmailVerificationService(
 
 
 @router.post("/verification/email/send", status_code=status.HTTP_200_OK, response_model=EmailVerificationResponse)
-async def send_verification_code(payload: EmailVerificationRequest):
+async def resend_verification_code(payload: EmailVerificationRequest, background_tasks: BackgroundTasks):
     """This endpoint sends a verification code to the user's email address.
     If an existing code is found in Redis for the email, it will be replaced with the new code.
     
@@ -107,20 +104,14 @@ async def send_verification_code(payload: EmailVerificationRequest):
         redis_client.ping()
     except Exception as e:
         logger.error(f"Redis connection failed: {str(e)}")
-        raise HTTPException(
+        return JSONResponse(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Service temporarily unavailable",
+            content={"detail": "Service temporarily unavailable"},
         )
 
     try:
         # Send verification code (this will replace any existing code in Redis)
-        success = verification_service.send_verification_code(payload.email)
-
-        if not success:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to send verification code. Please try again later.",
-            )
+        background_tasks.add_task(verification_service.send_verification_code, payload.email)  # Send verification code in background
 
         logger.info(f"Verification code sent successfully to {payload.email}")
 
@@ -129,15 +120,11 @@ async def send_verification_code(payload: EmailVerificationRequest):
             email=payload.email,
             expires_in_minutes=int(CODE_EXPIRY.total_seconds() / 60)
         )
-
-    except HTTPException:
-        # Re-raise HTTPExceptions without wrapping
-        raise
     except Exception as e:
         logger.error(f"Unexpected error sending verification code to {payload.email}: {str(e)}")
-        raise HTTPException(
+        return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Sorry, we can't send the verification code at the moment. Please try again later.",
+            content={"detail": "Sorry, we can't send the verification code at the moment. Please try again later."},
         )
 
 

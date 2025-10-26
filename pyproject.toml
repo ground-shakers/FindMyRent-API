@@ -12,6 +12,7 @@ dependencies = [
     "fastapi-limiter>=0.1.6",
     "fastapi[standard]>=0.116.1",
     "httpx>=0.28.1",
+    "logfire[fastapi,system-metrics]>=4.14.2",
     "motor>=3.7.1",
     "passlib>=1.7.4",
     "psycopg>=3.2.10",

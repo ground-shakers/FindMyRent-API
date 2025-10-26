@@ -1,5 +1,6 @@
 import redis
 import os
+import logfire
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -41,6 +42,8 @@ async def lifespan(app: FastAPI):
     yield
     client.close()
     await redis_connection.close()
+
+logfire.configure(token=os.getenv("LOGFIRE_WRITE_TOKEN"))
 
 app = FastAPI(
     title="FindMyRent API",

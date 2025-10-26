@@ -109,8 +109,8 @@ class DiditWebhookPayload(BaseModel):
     decision: Optional[Decision] = None
 
 
-class WebhookResponse(BaseModel):
-    """Response model for webhook endpoint."""
+class DiditWebhookResponse(BaseModel):
+    """Didit webhook response model."""
     success: bool
     message: str
     session_id: str

@@ -1,4 +1,7 @@
-import logging
+""" User router for handling user-related endpoints.
+"""
+
+from utils.logger import logger
 
 from fastapi import APIRouter, status, Depends, HTTPException, Form, UploadFile, BackgroundTasks
 
@@ -14,10 +17,6 @@ from typing import Annotated
 from pydantic import ValidationError
 
 from security.helpers import get_password_hash
-
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/api/v1/users",

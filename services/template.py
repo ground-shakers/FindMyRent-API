@@ -1,15 +1,10 @@
 """Service for handling email templates."""
 
-import logging
+from utils.logger import logger
 
 from typing import Dict, Any
 
 from pathlib import Path
-
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
 
 class TemplateService:
     """Service for handling email templates."""

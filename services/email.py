@@ -1,7 +1,8 @@
 """Contains all the code related to the emailing service"""
 
 import smtplib
-import logging
+
+from utils.logger import logger
 
 from typing import Optional, List
 
@@ -9,11 +10,6 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 from models.helpers import ContentType
-
-
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 
 class EmailService:

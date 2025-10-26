@@ -1,7 +1,7 @@
 """Contains all the logic for controllers relating to validation of details
 """
 
-import logging
+from utils.logger import logger
 
 from dotenv import load_dotenv
 
@@ -27,8 +27,6 @@ from controllers.abstract_controller import send_validate_email_request, send_ph
 
 load_dotenv()
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 def is_phone_number_valid(phone_number: str) -> tuple[bool, str]:
     """Validate `phone_number` with `AbstractAPIController` and return

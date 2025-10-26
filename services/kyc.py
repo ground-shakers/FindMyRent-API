@@ -1,11 +1,11 @@
-import logging
+
+from utils.logger import logger
+
 from typing import Optional
 from beanie import PydanticObjectId
 
 from models.users import LandLord
 from schema.kyc import DiditWebhookPayload
-
-logger = logging.getLogger(__name__)
 
 
 class KYCService:

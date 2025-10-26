@@ -1,13 +1,11 @@
-import logging
+
+from utils.logger import logger
+
 from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 
 from schema.kyc import DiditWebhookPayload, WebhookResponse
 from services.kyc import KYCService
-
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/kyc",
