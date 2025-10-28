@@ -113,7 +113,7 @@ async def resend_verification_code(payload: EmailVerificationRequest, background
         # Send verification code (this will replace any existing code in Redis)
         background_tasks.add_task(verification_service.send_verification_code, payload.email)  # Send verification code in background
 
-        logger.info(f"Verification code sent successfully to {payload.email}")
+        logger.info(f"Verification code sent successfully to user with email: {payload.email}")
 
         return EmailVerificationResponse(
             message="Verification code sent successfully",
