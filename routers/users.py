@@ -1,4 +1,4 @@
-""" User router for handling user-related endpoints.
+""" User router for handling all user-related endpoints.
 """
 
 from utils.logger import logger
