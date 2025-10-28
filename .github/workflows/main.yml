@@ -112,7 +112,7 @@ jobs:
             
             # Check service status
             echo "Checking service status..."
-            sudo systemctl status FindMyRent-API --no-pager
+            sudo systemctl status findMyRent-api.service --no-pager
             
             # Wait for service to be ready
             echo "Waiting for service to be ready..."
@@ -202,6 +202,6 @@ jobs:
             source venv/bin/activate
             pip install -r requirements.txt
             
-            sudo systemctl restart FindMyRent-API
+            sudo systemctl restart findMyRent-api.service
             
             echo "Rollback completed!"
