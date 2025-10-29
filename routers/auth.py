@@ -121,7 +121,7 @@ async def resend_verification_code(payload: EmailVerificationRequest, background
             expires_in_minutes=int(CODE_EXPIRY.total_seconds() / 60)
         )
     except Exception as e:
-        logger.error(f"Unexpected error sending verification code to {payload.email}: {str(e)}")
+        logger.error(f"Unexpected error sending email verification code to {payload.email}: {str(e)}")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"detail": "Sorry, we can't send the verification code at the moment. Please try again later."},
