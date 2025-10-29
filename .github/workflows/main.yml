@@ -139,7 +139,7 @@ jobs:
           password: ${{ secrets.MAIL_PASSWORD }}
           subject: "✅ Deployment Successful - ${{ github.repository }}"
           to: ${{ secrets.MAIL_TO }}
-          from: ${{ secrets.MAIL_USERNAME }}
+          from: ${{ secrets.MAIL_FROM }}
           body: |
             Deployment completed successfully!
             
