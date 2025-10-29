@@ -21,7 +21,7 @@ from models.listings import Listing
 
 from dotenv import load_dotenv
 
-from routers import auth, users, kyc
+from routers import auth, users
 
 load_dotenv()
 
@@ -71,4 +71,3 @@ app.add_middleware(
 
 app.include_router(auth.router)
 app.include_router(users.router)
-# app.include_router(kyc.router)
