@@ -63,7 +63,6 @@ async def create_user(payload: CreateUserRequest, verification_service: Annotate
         )
     except ValidationError as e:
         # We reach this block if CreateUserResponse validation fails
-        # This will only happen if MongoDB fails to generate an ID for some reason, for the new user
         logger.error(f"Validation error for new user with:\nemail {payload.email}:\nerror {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
