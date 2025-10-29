@@ -11,7 +11,7 @@ on:
       - develop
 
 env:
-  PYTHON_VERSION: '3.11'
+  PYTHON_VERSION: '3.13'
   APP_NAME: FindMyRent-API
 
 jobs:
@@ -26,7 +26,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: '3.13'
           cache: 'pip'
 
       - name: Install dependencies
@@ -62,7 +62,7 @@ jobs:
     name: Deploy to EC2
     runs-on: ubuntu-latest
     needs: test
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
     
     steps:
       - name: Checkout code
@@ -88,9 +88,9 @@ jobs:
             
             # Pull latest changes
             echo "Pulling latest code from GitHub..."
-            git fetch origin main
-            git reset --hard origin/main
-            
+            git fetch origin master
+            git reset --hard origin/master
+
             # Activate virtual environment
             echo "Activating virtual environment..."
             source venv/bin/activate
