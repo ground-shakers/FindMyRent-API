@@ -41,9 +41,7 @@ class PhoneRegistrationDetails(BaseModel):
 
 
 class PhoneRiskDetails(BaseModel):
-    risk_level: Annotated[
-        Literal["low", "medium", "high"], Field()
-    ]  # Risk level (low, medium, high)
+    risk_level: Annotated[Literal["low", "medium", "high"], Field()]  # Risk level (low, medium, high)
     is_disposable: Annotated[Optional[bool], Field()]  # Whether the phone number is disposable
     is_abuse_detected: Annotated[Optional[bool], Field()]  # Whether abuse has been detected on the phone number
 
