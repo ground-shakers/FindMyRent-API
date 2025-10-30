@@ -4,6 +4,10 @@ import logfire
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
+
 from contextlib import asynccontextmanager
 
 import redis.asyncio
@@ -51,6 +55,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# app.add_middleware(HTTPSRedirectMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -58,15 +63,17 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-app.add_middleware(
-    IdempotencyMiddleware,
-    ttl_seconds=3600,
-    lock_ttl=10,
-)
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts=["127.0.0.1"])  
+app.add_middleware(GZipMiddleware, minimum_size=500)
 app.add_middleware(
     RateLimitMiddleware,
     requests_per_minute=100,  # 100 requests per minute
     bucket_capacity=120,  # Allow small bursts
+)
+app.add_middleware(
+    IdempotencyMiddleware,
+    ttl_seconds=3600,
+    lock_ttl=10,
 )
 
 app.include_router(auth.router)

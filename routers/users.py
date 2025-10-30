@@ -12,6 +12,7 @@ from models.users import LandLord
 from services.verification import get_email_verification_service, EmailVerificationService
 
 from pymongo.errors import DuplicateKeyError
+from beanie.exceptions import RevisionIdWasChanged
 
 from typing import Annotated
 from pydantic import ValidationError
@@ -33,16 +34,15 @@ async def create_user(payload: CreateUserRequest, verification_service: Annotate
     logger.info(f"Starting user creation: {payload.email}")
 
     try:
-
         new_user = LandLord(
             **payload.model_dump(exclude=["verify_password"]), user_type="landlord"
         )
-
+        
         # Hash the user's password before saving
         new_user.password = get_password_hash(payload.password)
 
-        # Save the new user to the database
-        await new_user.save()
+        # Insert the new user to the database
+        await new_user.insert()
         logger.info(f"Saved new inactive user to database: {new_user.email}")
 
         logger.info(f"Sending verification code to email: {new_user.email} with user ID: {str(new_user.id)}")
@@ -60,6 +60,12 @@ async def create_user(payload: CreateUserRequest, verification_service: Annotate
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="A user with this email already exists",
+        )
+    except RevisionIdWasChanged:
+        logger.error(f"Revision ID conflict when creating user: {payload.email}")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="User creation conflict. Please try again.",
         )
     except ValidationError as e:
         # We reach this block if CreateUserResponse validation fails
