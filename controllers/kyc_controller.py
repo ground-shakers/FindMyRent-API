@@ -37,7 +37,7 @@ async def create_kyc_session(user: LandLord) -> dict | None:
     try:
         body = {
             "workflow_id": WORKFLOW_ID,
-            "vendor_data": user.id,
+            "vendor_data": str(user.id),
             "expected_details": {
                 "first_name": user.first_name,
                 "last_name": user.last_name,

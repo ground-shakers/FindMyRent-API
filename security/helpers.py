@@ -226,13 +226,6 @@ def decode_refresh_token(refresh_token: str) -> RefreshTokenData | None:
             jti=jti,
             issued_at=issued_at
         )
-
-        return RefreshTokenData(
-            user_id=user_id,
-            token_family=token_family,
-            jti=jti,
-            issued_at=issued_at
-        )
     except Exception:
         return None
 
@@ -266,7 +259,7 @@ async def get_current_user(
 
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail={"message": "Could not validate credentials"},
+        detail="Could not validate credentials",
         headers={"WWW-Authenticate": authenticate_value},
     )
     try:

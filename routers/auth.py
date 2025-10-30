@@ -242,13 +242,13 @@ async def login_for_access_token(
             minutes=int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
         )
         access_token = create_access_token(
-            data={"sub": str(user.id), "scopes": user_type_in_db.permissions},
+            data={"sub": str(user.email), "scopes": user_type_in_db.permissions},
             expires_delta=access_token_expires,
         )
 
         # Create refresh token
         token_family = secrets.token_urlsafe(32)  # Generate unique token family
-        refresh_token = create_refresh_token(str(user.id), token_family)
+        refresh_token = create_refresh_token(str(user.email), token_family)
 
         logger.info(f"User {user.email} logged in successfully")
 
