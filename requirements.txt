@@ -14,3 +14,7 @@ pytz>=2025.2
 redis>=6.4.0
 requests>=2.32.5
 slowapi>=0.1.9
+opentelemetry-instrumentation-httpx>=0.59b0
+opentelemetry-instrumentation-pymongo>=0.59b0
+opentelemetry-instrumentation-redis>=0.59b0
+opentelemetry-instrumentation-requests>=0.59b0
