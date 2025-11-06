@@ -1,10 +1,11 @@
 """Service for handling email templates."""
 
-from utils.logger import logger
+import logfire
 
 from typing import Dict, Any
 
 from pathlib import Path
+
 
 class TemplateService:
     """Service for handling email templates."""

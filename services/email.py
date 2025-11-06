@@ -2,7 +2,7 @@
 
 import smtplib
 
-from utils.logger import logger
+import logfire
 
 from typing import Optional, List
 
@@ -64,11 +64,11 @@ class EmailService:
                 server.login(self.username, self.password)
                 server.send_message(msg)
 
-            logger.info(f"Email sent successfully to {to}")
+            logfire.info(f"Email sent successfully to {to}")
             return True
 
         except Exception as e:
-            logger.error(f"Failed to send email to {to}: {str(e)}")
+            logfire.error(f"Failed to send email to {to}: {str(e)}")
             return False
 
     def _create_simple_message(

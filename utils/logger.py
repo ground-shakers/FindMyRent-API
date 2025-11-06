@@ -1,17 +1,20 @@
-"""Logger for the application.
-"""
-import logfire
-
-import os
-
-from dotenv import load_dotenv
+"""Universal logfire for the application."""
 
 import logfire
-from logging import basicConfig, getLogger
+from logging import getLogger
 
-load_dotenv()
+# Create a universal logfire instance that can be imported anywhere
+logger = getLogger("FindMyRent")
 
-logfire.configure(token=os.getenv("LOGFIRE_WRITE_TOKEN"))
-basicConfig(handlers=[logfire.LogfireLoggingHandler()])
 
-logger = getLogger(__name__)
+# Also create a convenience function for getting logfire with context
+def get_logfire(name: str = "FindMyRent"):
+    """Get a logfire instance with optional context name."""
+    return getLogger(name)
+
+
+def instrument_libraries():
+    """Instrument common libraries for better observability."""
+    logfire.instrument_httpx()
+    logfire.instrument_pymongo()
+    logfire.instrument_redis()

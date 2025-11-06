@@ -4,21 +4,14 @@ FastAPI Rate Limiting Middleware using Token Bucket Algorithm
 This module provides a thread-safe rate limiting middleware for FastAPI applications
 using the token bucket algorithm to control request rates per client.
 """
-
+import logfire
 import time
-import logging
+
 from typing import Callable, Dict, Optional
 from threading import Lock
 from fastapi import FastAPI, Request, Response, HTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
-
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
-logger = logging.getLogger(__name__)
 
 
 class TokenBucket:
@@ -130,7 +123,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self.bucket_lock = Lock()
         self.last_cleanup = time.time()
 
-        logger.info(
+        logfire.info(
             f"Rate limiter initialized: {requests_per_minute} req/min, "
             f"capacity: {self.bucket_capacity}, refill rate: {self.refill_rate:.2f} tokens/sec"
         )
@@ -172,7 +165,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 self.buckets[client_id] = TokenBucket(
                     capacity=self.bucket_capacity, refill_rate=self.refill_rate
                 )
-                logger.debug(f"Created new token bucket for client: {client_id}")
+                logfire.debug(f"Created new token bucket for client: {client_id}")
 
             return self.buckets[client_id]
 
@@ -203,7 +196,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 del self.buckets[client_id]
 
             if to_remove:
-                logger.info(f"Cleaned up {len(to_remove)} inactive token buckets")
+                logfire.info(f"Cleaned up {len(to_remove)} inactive token buckets")
 
             self.last_cleanup = now
 
@@ -249,7 +242,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         # Try to consume a token
         if bucket.consume():
             # Request allowed
-            logger.debug(
+            logfire.debug(
                 f"Request allowed for {client_id} on {request.url.path} "
                 f"({bucket.get_available_tokens():.2f} tokens remaining)"
             )
@@ -264,7 +257,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             return response
         else:
             # Rate limit exceeded
-            logger.warning(f"Rate limit exceeded for {client_id} on {request.url.path}")
+            logfire.warning(
+                f"Rate limit exceeded for {client_id} on {request.url.path}"
+            )
 
             # Calculate retry-after time (time to get one token back)
             retry_after = int(1 / self.refill_rate) + 1

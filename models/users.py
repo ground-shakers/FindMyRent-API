@@ -10,16 +10,7 @@ from .messages import Chat
 from .listings import Listing
 from .helpers import UserType
 
-from datetime import datetime
-
-
-class KYCVerificationTrail(BaseModel):
-    """Model representing the KYC verification trail for a user."""
-    
-    session_id: Annotated[str, Field()]
-    status: Annotated[str, Field()]
-    created_at: Annotated[datetime, Field()]
-    updated_at: Annotated[datetime, Field(default_factory=datetime.now)]
+from schema.kyc import CreateKYCSessionResponse
 
 class User(Document):
     """Base model for user-related entities.
@@ -47,7 +38,7 @@ class LandLord(User):
     verified: Annotated[bool, Field(default=False)]
     kyc_verified: Annotated[bool, Field(default=False)]  # Know Your Customer verification status
     listings: Annotated[List[Link[Listing]], Field(default=[])]  # List of properties listed by the landlord
-    kyc_verification_trail: Annotated[List[KYCVerificationTrail], Field(default=[])]  # KYC verification history
+    kyc_verification_trail: Annotated[List[CreateKYCSessionResponse], Field(default=[])]  # KYC verification history
 
     @field_serializer("id")
     def convert_pydantic_object_id_to_string(self, id: PydanticObjectId):

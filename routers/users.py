@@ -1,7 +1,7 @@
 """ User router for handling all user-related endpoints.
 """
 
-from utils.logger import logger
+import logfire
 
 from fastapi import APIRouter, status, Depends, HTTPException, Form, UploadFile, BackgroundTasks
 
@@ -31,7 +31,7 @@ async def create_user(payload: CreateUserRequest, verification_service: Annotate
     Only 'tenant' and 'landlord' user types can be created via this endpoint.
     """
 
-    logger.info(f"Starting user creation: {payload.email}")
+    logfire.info(f"Starting user creation: {payload.email}")
 
     try:
         new_user = LandLord(
@@ -43,40 +43,45 @@ async def create_user(payload: CreateUserRequest, verification_service: Annotate
 
         # Insert the new user to the database
         await new_user.insert()
-        logger.info(f"Saved new inactive user to database: {new_user.email}")
+        logfire.info(f"Saved new inactive user to database: {new_user.email}")
 
-        logger.info(f"Sending verification code to email: {new_user.email} with user ID: {str(new_user.id)}")
-        
+        logfire.info(f"Sending verification code to email: {new_user.email} with user ID: {str(new_user.id)}")
+
         background_tasks.add_task(verification_service.send_verification_code, new_user.email) # Send verification code in background
 
-        logger.info(f"Verification code sent to email: {new_user.email} with user ID: {str(new_user.id) if new_user.id else ''}")
+        logfire.info(f"Verification code sent to email: {new_user.email} with user ID: {str(new_user.id) if new_user.id else ''}")
         return CreateUserResponse(
             email=new_user.email,
             expires_in_minutes=10,
             user_id=str(new_user.id),
         )
     except DuplicateKeyError:
-        logger.warning(f"Attempt to create duplicate user: {payload.email}")
+        logfire.warning(f"Attempt to create duplicate user: {payload.email}")
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="A user with this email already exists",
         )
     except RevisionIdWasChanged:
-        logger.error(f"Revision ID conflict when creating user: {payload.email}")
+        logfire.error(f"Revision ID conflict when creating user: {payload.email}")
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="User creation conflict. Please try again.",
         )
     except ValidationError as e:
         # We reach this block if CreateUserResponse validation fails
-        logger.error(f"Validation error for new user with:\nemail {payload.email}:\nerror {str(e)}")
+        logfire.error(f"Validation error for new user with:\nemail {payload.email}:\nerror {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to create user",
         )
     except Exception as e:
-        logger.error(f"Unexpected error for new user with:\nemail {payload.email}:\nerror {str(e)}")
+        logfire.error(f"Unexpected error for new user with:\nemail {payload.email}:\nerror {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred",
         )
+
+@router.get("/hi")
+async def say_hi():
+    logfire.info("Saying hi!")
+    return "Hi!"
