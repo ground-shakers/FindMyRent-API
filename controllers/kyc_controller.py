@@ -50,7 +50,7 @@ async def create_kyc_session(user: LandLord) -> dict | None:
             },
         }
 
-        async with AsyncClient() as client:
+        async with AsyncClient(timeout=30.0) as client:
 
             response = await client.post(
                 f"{BASE_URL}/session/",
