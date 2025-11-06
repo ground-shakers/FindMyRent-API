@@ -1,8 +1,9 @@
 """Controller for the Didit KYC API"""
 
 import os
-
 import time
+
+import logfire
 
 import hashlib
 import hmac
@@ -61,11 +62,11 @@ async def create_kyc_session(user: LandLord) -> dict | None:
                 session_data = response.json()
                 return session_data
             else:
-                print(f"Failed to create KYC session: {response.status_code} - {response.text}")
+                logfire.error(f"Failed to create KYC session: {response.status_code} - {response.text}")
                 return None
 
     except Exception as e:
-        print(f"Error creating KYC session: {e}")
+        logfire.error(f"Error creating KYC session: {e}")
         return None
 
 async def verify_kyc_webhook_signature(request_body: str, signature_header: str, timestamp_header: str) -> bool:
