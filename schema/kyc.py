@@ -66,6 +66,18 @@ class AddressRawResults(BaseModel):
     ]
 
 
+class FaceMatchDetails(BaseModel):
+    score: Annotated[float, Field(description="Face match confidence score")]
+    status: Annotated[str, Field(description="Face match status")]
+    source_image: Annotated[
+        Optional[HttpUrl], Field(description="Source image URL", default=None)
+    ]
+    target_image: Annotated[
+        Optional[HttpUrl], Field(description="Target image URL", default=None)
+    ]
+    warnings: Annotated[List, Field(description="Face match warnings", default=[])]
+
+
 class ParsedAddressDetails(BaseModel):
     id: Annotated[Optional[str], Field(description="Unique identifier for the address", default=None)]
     address_type: Annotated[
@@ -172,7 +184,6 @@ class KYCVerificationDecisionDetails(KYCResponseBase):
     session_url: Annotated[
         HttpUrl, Field(description="URL for the KYC session")
     ]
-    status: Annotated[str, Field(description="Status of the ID verification")]
     features: Annotated[
         List[str], Field(description="List of features verified in the ID verification")
     ]
@@ -186,6 +197,16 @@ class KYCVerificationDecisionDetails(KYCResponseBase):
     ]
     callback: Annotated[
         HttpUrl | None, Field(description="Redirect URL once verification is complete", default=None)
+    ]
+    face_match: Annotated[
+        Optional[FaceMatchDetails],
+        Field(description="Face match verification details", default=None),
+    ]
+    ip_analysis: Annotated[
+        Optional[dict], Field(description="IP analysis details", default=None)
+    ]
+    liveness: Annotated[
+        Optional[dict], Field(description="Liveness detection details", default=None)
     ]
     id_verification: Annotated[IDVerificationDetails, Field(description="ID verification details from the KYC session")]
     reviews: Annotated[List[KYCSessionReviewDetails], Field(description="Reviews associated with the KYC session", default=[])]
