@@ -59,18 +59,21 @@ async def handle_kyc_webhook(request: Request):
     json_body: dict = json.loads(body_str)
 
     # Get headers
-    signature = request.headers.get("x-signature")
-    timestamp = request.headers.get("x-timestamp")
+    signature = request.headers.get("X-Signature")
+    timestamp = request.headers.get("X-Timestamp")
 
     if not all([signature, timestamp]):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
+    
+    try:
 
-    verified_webhook_signature = await verify_kyc_webhook_signature(body_str, signature, timestamp)
+        verified_webhook_signature = await verify_kyc_webhook_signature(body_str, signature, timestamp)
 
-    if not verified_webhook_signature:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
+        if not verified_webhook_signature:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
 
-    # # Validate and parse KYC data
-    # validated_kyc_data = validate_kyc_data(kyc_data=json_body)
-
-    logfire.info(f"Problematic data: {json.dumps(json_body, indent=2)}")
+        # # Validate and parse KYC data
+        # validated_kyc_data = validate_kyc_data(kyc_data=json_body)
+    except Exception as e:
+        logfire.info(f"Problematic data: {json.dumps(json_body, indent=2)}")
+        logfire.error(f"Error verifying KYC webhook signature: {str(e)}")
