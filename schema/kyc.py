@@ -103,7 +103,13 @@ class ParsedAddressDetails(BaseModel):
 
 class IDVerificationWarnings(BaseModel):
     risk: Annotated[str, Field(description="Risk level associated with the verification")]
-    additional_data: Annotated[Optional[str | int | float | HttpUrl], Field(description="Additional data related to the verification warnings")]
+    additional_data: Annotated[
+        Optional[dict[str, str | int | float] | str | int | float], 
+        Field(
+            description="Additional data related to the verification warnings. Can be a dict or scalar value.",
+            default=None
+        )
+    ]
     log_type: Annotated[str, Field(description="Type of log associated with the warnings")]
     short_description: Annotated[str, Field(description="Short description of the warning")]
     long_description: Annotated[str, Field(description="Longer description of the warning")]
