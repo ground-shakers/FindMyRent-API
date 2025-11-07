@@ -1,9 +1,6 @@
 """Defines schema of requests and responses related to security"""
 
-from pydantic import BaseModel, Field
-from typing import Annotated, List
-
-from models.helpers import UserType
+from pydantic import BaseModel
 
 from pydantic import BaseModel
 

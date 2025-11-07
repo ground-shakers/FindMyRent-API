@@ -21,7 +21,7 @@ from pprint import pprint
 
 router = APIRouter(
     prefix="/api/v1/kyc",
-    tags=["KYC"],
+    tags=["KYC Verification"],
 )
 
 

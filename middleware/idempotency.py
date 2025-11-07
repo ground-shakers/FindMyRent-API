@@ -4,10 +4,12 @@ import json
 import asyncio
 import base64
 import os
+
 from typing import Callable
 from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi.requests import Request
 from fastapi.responses import Response, JSONResponse
+
 import redis.asyncio as redis
 
 

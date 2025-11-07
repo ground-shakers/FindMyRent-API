@@ -13,7 +13,7 @@ class KYCResponseBase(BaseModel):
     session_id: Annotated[str, Field(description="Unique identifier for the KYC session")]
     workflow_id: Annotated[str, Field(description="ID of the workflow associated with the KYC session")]
     vendor_data: Annotated[str, Field(description="ID of the user in the FindMyRent system")]
-    metadata: Annotated[dict | None, Field(description="Additional metadata for the KYC session")]
+    metadata: Annotated[Optional[dict], Field(description="Additional metadata for the KYC session", default=None)]
     status: Annotated[str, Field(description="Current status of the KYC session")]
 
     class Config:
