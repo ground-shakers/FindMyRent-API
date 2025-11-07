@@ -1,7 +1,7 @@
 """Controller for the Didit KYC API"""
 
 import os
-import time
+from datetime import datetime
 
 import logfire
 
@@ -74,7 +74,7 @@ async def verify_kyc_webhook_signature(request_body: str, signature_header: str,
 
     # Check if timestamp is recent (within 5 minutes)
     timestamp = int(timestamp_header)
-    current_time = int(time())
+    current_time = int(datetime.now().timestamp())
 
     if abs(current_time - timestamp) > 300:  # 5 minutes
         return False
