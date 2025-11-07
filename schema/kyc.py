@@ -198,8 +198,8 @@ class KYCVerificationDecisionDetails(KYCResponseBase):
         Field(description="User details Expected for the ID verification"),
     ]
     contact_details: Annotated[
-        dict[str, str],
-        Field(description="Contact details of the user who was verified"),
+        Optional[dict[str, str]],
+        Field(description="Contact details of the user who was verified", default=None),
     ]
     callback: Annotated[
         HttpUrl | None, Field(description="Redirect URL once verification is complete", default=None)
