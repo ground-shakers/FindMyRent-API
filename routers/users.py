@@ -80,8 +80,3 @@ async def create_user(payload: CreateUserRequest, verification_service: Annotate
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred",
         )
-
-@router.get("/hi")
-async def say_hi():
-    logfire.info("Saying hi!")
-    return "Hi!"

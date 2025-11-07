@@ -8,11 +8,17 @@ from typing import Annotated, List, Optional
 
 
 class KYCResponseBase(BaseModel):
+    """Base model representing common fields in KYC responses."""
+
     session_id: Annotated[str, Field(description="Unique identifier for the KYC session")]
     workflow_id: Annotated[str, Field(description="ID of the workflow associated with the KYC session")]
     vendor_data: Annotated[str, Field(description="ID of the user in the FindMyRent system")]
     metadata: Annotated[dict | None, Field(description="Additional metadata for the KYC session")]
     status: Annotated[str, Field(description="Current status of the KYC session")]
+
+    class Config:
+        extra = "allow"
+
 
 class CreateKYCSessionResponse(KYCResponseBase):
     """Model representing the response from Didit for creating a KYC session."""
@@ -160,7 +166,6 @@ class IDVerificationDetails(BaseModel):
 class KYCVerificationDecisionDetails(KYCResponseBase):
     """Model representing the decision details from the KYC webhook."""
 
-    status: Annotated[str, Field(description="Final status of the KYC session")]
     session_number: Annotated[
         int, Field(description="Numeric identifier for the KYC session")
     ]
