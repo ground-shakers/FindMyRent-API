@@ -28,7 +28,6 @@ from models.messages import Message, Chat
 from models.listings import Listing
 
 from routers import auth, users, kyc
-from utils.logger import instrument_libraries
 
 
 # Load environment variables first
