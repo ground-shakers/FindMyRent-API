@@ -198,7 +198,7 @@ class KYCVerificationDecisionDetails(KYCResponseBase):
         Field(description="User details Expected for the ID verification"),
     ]
     contact_details: Annotated[
-        Optional[dict[str, str]],
+        Optional[dict[str, str | None | bool]],
         Field(description="Contact details of the user who was verified", default=None),
     ]
     callback: Annotated[
