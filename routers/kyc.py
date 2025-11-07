@@ -70,9 +70,7 @@ async def handle_kyc_webhook(request: Request):
     if not verified_webhook_signature:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
 
-    # Validate and parse KYC data
-    validated_kyc_data = validate_kyc_data(kyc_data=json_body)
+    # # Validate and parse KYC data
+    # validated_kyc_data = validate_kyc_data(kyc_data=json_body)
 
-    logfire.info(validated_kyc_data)
-
-    return "Still cooking"
+    logfire.info(f"Problematic data: {json.dumps(json_body, indent=2)}")
