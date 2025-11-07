@@ -36,10 +36,6 @@ load_dotenv()
 
 # Configure logfire BEFORE creating FastAPI app
 logfire.configure(token=os.getenv("LOGFIRE_WRITE_TOKEN"))
-basicConfig(handlers=[logfire.LogfireLoggingHandler()])
-
-instrument_libraries()  # Instrument common libraries for better observability
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
