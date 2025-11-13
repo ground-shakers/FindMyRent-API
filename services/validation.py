@@ -22,7 +22,7 @@ from pydantic import ValidationError
 from fastapi import HTTPException
 from fastapi import status
 
-from controllers.abstract_controller import (
+from controllers.abstract import (
     send_validate_email_request,
     send_phone_verification_request,
 )

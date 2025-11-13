@@ -58,7 +58,6 @@ class EmailService:
                 msg = self._create_simple_message(
                     to, subject, content, content_type, cc, bcc
                 )
-
             with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
                 server.starttls()
                 server.login(self.username, self.password)

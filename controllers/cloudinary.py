@@ -36,6 +36,3 @@ def upload_image_to_cloudinary(image_path: str) -> dict:
     """
     response: dict = cloudinary.uploader.upload(image_path)
     return response
-
-
-pprint(upload_image_to_cloudinary("C:/Users/noble/Desktop/FindMyRent/our-logo.jpg"))

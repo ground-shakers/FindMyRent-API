@@ -2,8 +2,9 @@
 
 import os
 
+import logfire
+
 from fastapi import status
-from fastapi.exceptions import HTTPException
 
 from models.helpers import ContentType
 
@@ -17,8 +18,6 @@ from typing import Optional
 from redis import Redis
 
 from dotenv import load_dotenv
-
-from fastapi import HTTPException, status
 
 from pathlib import Path
 
@@ -71,66 +70,89 @@ class EmailVerificationService:
         self.code_expiry = code_expiry
 
     def send_verification_code(self, email: str) -> bool:
-        """Generate and send verification code to email."""
-        # Note: Rate limiting is now handled by slowapi decorator at the route level
+        """Send an email verification code to the specified email address.
 
-        # Generate and store code
-        code = generate_verification_code()
-        self._store_code(email, code)
+        Args:
+            email (str): The email address to send the verification code to.
 
-        # Send email
-        html_content = self.template_service.render_verification_email(code, email)
-        return self.email_service.send_email(
-            to=email,
-            subject="Your Verification Code",
-            content=html_content,
-            content_type=ContentType.HTML,
-        )
+        Returns:
+            bool: True if the email was sent successfully, False otherwise.
+        """
 
-    def verify_code(self, email: str, code: str) -> bool:
-        """Verify the code against stored value."""
-        # Check failed attempts
-        if not self._check_attempts(email):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Too many failed attempts. Please request a new verification code.",
+
+        with logfire.span(f"Sending email verification code to: {email}"):
+            # Generate and store code
+            code = generate_verification_code()
+            
+            logfire.info(f"Generated verification code for email: {email}")
+            
+            self._store_code(email, code)
+            
+            logfire.info(f"Stored verification code for email: {email} in Redis")
+
+            # Send email
+            html_content = self.template_service.render_verification_email(code, email)
+            
+            logfire.info(f"Prepared verification email content for: {email}")
+            
+            return self.email_service.send_email(
+                to=email,
+                subject="Your FindMyRent Verification Code",
+                content=html_content,
+                content_type=ContentType.HTML,
             )
+
+    def verify_code(self, email: str, code: str) -> tuple[bool, int, str]:
+        """Verify the email OTP code.
+
+        Args:
+            email (str): The email address associated with the OTP code.
+            code (str): The OTP code submitted by the user.
+
+        Returns:
+            tuple[bool, int, str]: A tuple containing the verification result, HTTP status code, and a message.
+        """
+
+        # Check failed attempts
+        if self._is_attempt_limit_reached(email):
+            return (False, status.HTTP_429_TOO_MANY_REQUESTS, "Too many failed attempts. Please request a new code.")
 
         # Get stored code
         stored_code = self._get_stored_code(email)
 
         if not stored_code:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Verification code not found or expired. Please request a new code.",
-            )
+            return (False, status.HTTP_400_BAD_REQUEST, "Verification code expired or not found. Please request a new code.")
 
         # Verify code
         if code != stored_code:
             self._increment_attempts(email)
             remaining = 5 - self._get_attempts(email)
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=f"Invalid verification code. {remaining} attempts remaining.",
-            )
+            return (False, status.HTTP_401_UNAUTHORIZED, f"Invalid verification code. {remaining} attempts remaining.")
 
         # Success - cleanup
         self._cleanup_verification(email)
-        return True
+        return (True, status.HTTP_200_OK, "Verification successful.")
 
     def _store_code(self, email: str, code: str):
         """Store verification code in Redis."""
-        key = f"verification:{email}"
+        key = f"email:verification:{email}"
         self.redis.setex(key, self.code_expiry, code)
 
     def _get_stored_code(self, email: str) -> Optional[str]:
         """Get stored verification code."""
-        key = f"verification:{email}"
+        key = f"email:verification:{email}"
         code = self.redis.get(key)
         return code if code else None
 
-    def _check_attempts(self, email: str) -> bool:
-        """Check if attempts limit exceeded."""
+    def _is_attempt_limit_reached(self, email: str) -> bool:
+        """Check if failed code attempt limit is reached.
+
+        Args:
+            email (str): Email address pegged to the verification code.
+
+        Returns:
+            bool: True if over limit, False otherwise.
+        """
         attempts = self._get_attempts(email)
         if attempts >= 5:
             self._cleanup_verification(email)

@@ -190,21 +190,15 @@ async def verify_email_code(payload: EmailVerificationCodeValidationRequest):
     try:
         # Validate code format
         submitted_code = payload.code.strip()
-        if not submitted_code.isdigit() or len(submitted_code) != CODE_LENGTH:
-            return JSONResponse(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                content={
-                    "detail": f"Invalid code format. Code must be {CODE_LENGTH} digits."
-                },
-            )
 
         # Verify code
-        success = verification_service.verify_code(payload.email, submitted_code)
+        success, status_code, message = verification_service.verify_code(payload.email, submitted_code)
 
         if not success:
+            logfire.warning(f"Email verification failed for {payload.email}: {message}: with status code: {status_code}")
             return JSONResponse(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                content={"detail": "Invalid verification code"},
+                status_code=status_code,
+                content={"detail": message},
             )
 
         # Verify user account
@@ -213,6 +207,7 @@ async def verify_email_code(payload: EmailVerificationCodeValidationRequest):
         )
 
         if not user:
+            logfire.warning("User not in DB tried email OTP verification")
             return JSONResponse(
                 status_code=status.HTTP_404_NOT_FOUND,
                 content={"detail": "User not found"},
@@ -328,7 +323,7 @@ async def refresh_access_token(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={
-                "message": "Token has already been used. All sessions invalidated for security."
+                "message": "Your session has been invalidated. Please log in again."
             },
         )
 

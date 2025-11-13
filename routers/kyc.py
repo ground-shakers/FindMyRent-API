@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 
 from security.helpers import get_current_active_user
 
-from controllers.kyc_controller import create_kyc_session, verify_kyc_webhook_signature
+from controllers.didit import create_kyc_session, verify_kyc_webhook_signature
 from services.kyc import validate_kyc_data
 
 
