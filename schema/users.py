@@ -24,20 +24,20 @@ class CreateUserRequest(BaseModel):
     password: Annotated[str, Field(min_length=8)]
     verify_password: Annotated[str, Field(min_length=8, serialization_alias="verifyPassword")]
 
-    @field_validator("phone_number")
-    def validate_phone_number(cls, v: str) -> str:
-        """Validate phone number format."""
+    # @field_validator("phone_number")
+    # def validate_phone_number(cls, v: str) -> str:
+    #     """Validate phone number format."""
 
-        validation_response = is_phone_number_valid(v)
-        is_valid = validation_response[0]
-        validation_description = validation_response[1]
+    #     validation_response = is_phone_number_valid(v)
+    #     is_valid = validation_response[0]
+    #     validation_description = validation_response[1]
 
-        if not is_valid:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=validation_description,
-            )
-        return v
+    #     if not is_valid:
+    #         raise HTTPException(
+    #             status_code=status.HTTP_400_BAD_REQUEST,
+    #             detail=validation_description,
+    #         )
+    #     return v
 
     # * Validate the password to ensure it has at least one uppercase letter,
     # * one special character, one lowercase letter, and one number
