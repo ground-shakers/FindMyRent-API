@@ -17,9 +17,9 @@ from datetime import timedelta
 
 from pathlib import Path as TemplatePath
 
-from services.verification import EmailVerificationService
-from services.template import TemplateService
-from services.email import EmailService
+from services.verification import get_email_verification_service
+from services.template import get_template_service
+from services.email import get_email_service
 from security.refresh_token import (
     get_secure_refresh_token_service,
     SecureRefreshTokenService,
@@ -60,37 +60,14 @@ router = APIRouter(
 # Redis configuration
 redis_client = Redis(host="localhost", port=6379, db=0, decode_responses=True)
 
-SMTP_SERVER = os.getenv("SMTP_SERVER")
-SMTP_PORT = os.getenv("SMTP_PORT")
-SMTP_USERNAME = os.getenv("SMTP_USERNAME")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
-FROM_EMAIL = os.getenv("FROM_EMAIL")
-
 # Verification code settings
 CODE_LENGTH = 6
 CODE_EXPIRY = timedelta(minutes=10)
 
-# Template directory
-TEMPLATES_DIR = TemplatePath("templates")
 
-
-email_service = EmailService(
-    smtp_server=SMTP_SERVER,
-    smtp_port=SMTP_PORT,
-    username=SMTP_USERNAME,
-    password=SMTP_PASSWORD,
-    from_email=FROM_EMAIL,
-)
-
-template_service = TemplateService(templates_dir=TEMPLATES_DIR)
-
-verification_service = EmailVerificationService(
-    redis_client=redis_client,
-    email_service=email_service,
-    template_service=template_service,
-    code_length=CODE_LENGTH,
-    code_expiry=CODE_EXPIRY,
-)
+email_service = get_email_service()
+template_service = get_template_service()
+verification_service = get_email_verification_service()
 
 
 @router.post(
