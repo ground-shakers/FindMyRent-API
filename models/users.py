@@ -17,7 +17,8 @@ class User(Document):
     """
     first_name: Annotated[str, Field(max_length=50, min_length=2, serialization_alias="firstName")]
     last_name: Annotated[str, Field(max_length=50, min_length=2, serialization_alias="lastName")]
-    email: Annotated[EmailStr, Indexed(index_type=pymongo.TEXT, unique=True), Field(max_length=50)]
+    # Use a regular unique ascending index for email (text indexes cannot be unique)
+    email: Annotated[EmailStr, Indexed(unique=True), Field(max_length=50)]
     phone_number: Annotated[str, Field(serialization_alias="phoneNumber")]
     password: Annotated[str, Field(min_length=8)]
     is_active: Annotated[bool, Field(default=True, serialization_alias="isActive")]
