@@ -10,8 +10,8 @@ from models.helpers import ContentType
 
 from datetime import timedelta
 
-from .template import TemplateService
-from .email import EmailService
+from .template import TemplateService, get_template_service
+from .email import EmailService, get_email_service
 
 from typing import Optional
 
@@ -19,7 +19,6 @@ from redis import Redis
 
 from dotenv import load_dotenv
 
-from pathlib import Path
 
 from security.helpers import generate_verification_code
 
@@ -28,30 +27,14 @@ load_dotenv()
 # Redis configuration
 redis_client = Redis(host="localhost", port=6379, db=0, decode_responses=True)
 
-SMTP_SERVER = os.getenv("SMTP_SERVER")
-SMTP_PORT = os.getenv("SMTP_PORT")
-SMTP_USERNAME = os.getenv("SMTP_USERNAME")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
-FROM_EMAIL = os.getenv("FROM_EMAIL")
-
 # Verification code settings
 CODE_LENGTH = 6
 CODE_EXPIRY = timedelta(minutes=10)
 MAX_ATTEMPTS = 5
 
-# Template directory
-TEMPLATES_DIR = Path("templates")
 
-
-email_service = EmailService(
-    smtp_server=SMTP_SERVER,
-    smtp_port=SMTP_PORT,
-    username=SMTP_USERNAME,
-    password=SMTP_PASSWORD,
-    from_email=FROM_EMAIL,
-)
-
-template_service = TemplateService(templates_dir=TEMPLATES_DIR)
+email_service = get_email_service() # Email service instance
+template_service = get_template_service() # Template service instance
 
 class EmailVerificationService:
     """Service for handling email verification."""
@@ -135,13 +118,25 @@ class EmailVerificationService:
         return (True, status.HTTP_200_OK, "Verification successful.")
 
     def _store_code(self, email: str, code: str):
-        """Store verification code in Redis."""
+        """Store email verification code in Redis.
+
+        Args:
+            email (str): Email address to store the verification code for.
+            code (str): The verification code to store.
+        """
         key = f"email:verification:{email}"
         # Redis setex expects seconds (or an int); convert timedelta to seconds
         self.redis.setex(key, int(self.code_expiry.total_seconds()), code)
 
     def _get_stored_code(self, email: str) -> Optional[str]:
-        """Get stored verification code."""
+        """Get stored email verification code.
+
+        Args:
+            email (str): Email address to retrieve the verification code for.
+
+        Returns:
+            Optional[str]: The stored verification code or None if not found.
+        """
         key = f"email:verification:{email}"
         code = self.redis.get(key)
         return code if code else None
@@ -163,13 +158,24 @@ class EmailVerificationService:
         return False
 
     def _get_attempts(self, email: str) -> int:
-        """Get number of failed attempts."""
+        """Get number of failed email verification code submission attempts.
+
+        Args:
+            email (str): Email address pegged to the verification code.
+
+        Returns:
+            int: Number of failed attempts.
+        """
         key = f"attempts:{email}"
         attempts = self.redis.get(key)
         return int(attempts) if attempts else 0
 
     def _increment_attempts(self, email: str):
-        """Increment failed attempts counter."""
+        """Increment failed email verification code attempts counter.
+
+        Args:
+            email (str): Email address pegged to the verification code.
+        """
         key = f"attempts:{email}"
         if self.redis.exists(key):
             self.redis.incr(key)
@@ -178,13 +184,22 @@ class EmailVerificationService:
             self.redis.setex(key, int(self.code_expiry.total_seconds()), 1)
 
     def _cleanup_verification(self, email: str):
-        """Clean up all verification-related keys."""
+        """Delete email verification code and attempts counter from Redis
+
+        Args:
+            email (str): Email address pegged to the verification code.
+        """
         # delete the exact keys used for storing the code and attempts
         self.redis.delete(f"email:verification:{email}")
         self.redis.delete(f"attempts:{email}")
 
+
 def get_email_verification_service() -> EmailVerificationService:
-    """Factory function to create EmailVerificationService instance."""
+    """Factory function to create EmailVerificationService instance.
+
+    Returns:
+        EmailVerificationService: An instance of EmailVerificationService.
+    """
     return EmailVerificationService(
         redis_client=redis_client,
         email_service=email_service,

@@ -6,6 +6,10 @@ from typing import Dict, Any
 
 from pathlib import Path
 
+from functools import lru_cache
+
+# Template directory
+TEMPLATES_DIR = Path("templates")
 
 class TemplateService:
     """Service for handling email templates."""
@@ -91,3 +95,12 @@ class TemplateService:
         return self.render_template(
             "password_reset_email", {"RESET_LINK": reset_link, "EMAIL": email}
         )
+
+@lru_cache()
+def get_template_service() -> TemplateService:
+    """Get an instance of the TemplateService.
+
+    Returns:
+        TemplateService: An instance of the TemplateService.
+    """
+    return TemplateService(templates_dir=TEMPLATES_DIR)

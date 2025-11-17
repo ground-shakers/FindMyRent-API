@@ -1,6 +1,12 @@
 """Contains all the code related to the emailing service"""
 
+import os
+
+from dotenv import load_dotenv
+
 import smtplib
+
+from functools import lru_cache
 
 import logfire
 
@@ -11,23 +17,17 @@ from email.mime.multipart import MIMEMultipart
 
 from models.helpers import ContentType
 
+load_dotenv()
 
 class EmailService:
     """Service for handling email operations."""
 
-    def __init__(
-        self,
-        smtp_server: str,
-        smtp_port: int,
-        username: str,
-        password: str,
-        from_email: str,
-    ):
-        self.smtp_server = smtp_server
-        self.smtp_port = smtp_port
-        self.username = username
-        self.password = password
-        self.from_email = from_email
+    def __init__(self):
+        self.smtp_server = os.getenv("SMTP_SERVER")
+        self.smtp_port = os.getenv("SMTP_PORT")
+        self.username = os.getenv("SMTP_USERNAME")
+        self.password = os.getenv("SMTP_PASSWORD")
+        self.from_email = os.getenv("FROM_EMAIL")
 
     def send_email(
         self,
@@ -140,3 +140,13 @@ class EmailService:
         msg.attach(html_part)
 
         return msg
+
+
+@lru_cache()
+def get_email_service() -> EmailService:
+    """Factory function to create EmailService instance.
+
+    Returns:
+        EmailService: An instance of EmailService.
+    """
+    return EmailService()
