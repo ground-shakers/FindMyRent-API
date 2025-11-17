@@ -37,6 +37,7 @@ FROM_EMAIL = os.getenv("FROM_EMAIL")
 # Verification code settings
 CODE_LENGTH = 6
 CODE_EXPIRY = timedelta(minutes=10)
+MAX_ATTEMPTS = 5
 
 # Template directory
 TEMPLATES_DIR = Path("templates")
@@ -126,7 +127,7 @@ class EmailVerificationService:
         # Verify code
         if code != stored_code:
             self._increment_attempts(email)
-            remaining = 5 - self._get_attempts(email)
+            remaining = MAX_ATTEMPTS - self._get_attempts(email)
             return (False, status.HTTP_401_UNAUTHORIZED, f"Invalid verification code. {remaining} attempts remaining.")
 
         # Success - cleanup
@@ -136,7 +137,8 @@ class EmailVerificationService:
     def _store_code(self, email: str, code: str):
         """Store verification code in Redis."""
         key = f"email:verification:{email}"
-        self.redis.setex(key, self.code_expiry, code)
+        # Redis setex expects seconds (or an int); convert timedelta to seconds
+        self.redis.setex(key, int(self.code_expiry.total_seconds()), code)
 
     def _get_stored_code(self, email: str) -> Optional[str]:
         """Get stored verification code."""
@@ -154,10 +156,11 @@ class EmailVerificationService:
             bool: True if over limit, False otherwise.
         """
         attempts = self._get_attempts(email)
-        if attempts >= 5:
+        if attempts >= MAX_ATTEMPTS:
+            # reached or exceeded allowed attempts; cleanup stored data and report limit reached
             self._cleanup_verification(email)
-            return False
-        return True
+            return True
+        return False
 
     def _get_attempts(self, email: str) -> int:
         """Get number of failed attempts."""
@@ -171,11 +174,13 @@ class EmailVerificationService:
         if self.redis.exists(key):
             self.redis.incr(key)
         else:
-            self.redis.setex(key, self.code_expiry, 1)
+            # set attempts key with same expiry as the verification code
+            self.redis.setex(key, int(self.code_expiry.total_seconds()), 1)
 
     def _cleanup_verification(self, email: str):
         """Clean up all verification-related keys."""
-        self.redis.delete(f"verification:{email}")
+        # delete the exact keys used for storing the code and attempts
+        self.redis.delete(f"email:verification:{email}")
         self.redis.delete(f"attempts:{email}")
 
 def get_email_verification_service() -> EmailVerificationService:
