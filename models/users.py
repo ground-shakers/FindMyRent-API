@@ -10,7 +10,8 @@ from .messages import Chat
 from .listings import Listing
 from .helpers import UserType
 
-from schema.kyc import KYCWebhookResponse
+from schema.kyc import KYCWebhookResponse, CreateKYCSessionResponse
+from typing import Union
 
 class User(Document):
     """Base model for user-related entities.
@@ -39,7 +40,8 @@ class LandLord(User):
     verified: Annotated[bool, Field(default=False)]
     kyc_verified: Annotated[bool, Field(default=False)]  # Know Your Customer verification status
     listings: Annotated[List[Link[Listing]], Field(default=[])]  # List of properties listed by the landlord
-    kyc_verification_trail: Annotated[List[KYCWebhookResponse], Field(default=[])]  # KYC verification history
+    # Temporarily allow both session responses and webhook responses until data migration
+    kyc_verification_trail: Annotated[List[Union[KYCWebhookResponse, CreateKYCSessionResponse]], Field(default=[])]
 
     @field_serializer("id")
     def convert_pydantic_object_id_to_string(self, id: PydanticObjectId):
