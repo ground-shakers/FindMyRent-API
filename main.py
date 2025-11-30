@@ -1,8 +1,7 @@
 import redis
 import os
 import logfire
-
-from logging import basicConfig
+import uvicorn
 
 from dotenv import load_dotenv
 
@@ -10,6 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
+from middlewares import SecurityHeadersMiddleware
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from contextlib import asynccontextmanager
@@ -27,7 +27,7 @@ from models.security import Permissions
 from models.messages import Message, Chat
 from models.listings import Listing
 
-from routers import auth, users, kyc
+from routers import auth, users, kyc, listings
 
 
 # Load environment variables first
@@ -67,23 +67,25 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Instrument FastAPI app with logfire
-# logfire.instrument_fastapi(app)
-# logfire.info("FastAPI application instrumented with logfire")
-
 # app.add_middleware(HTTPSRedirectMiddleware)
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts=["127.0.0.1"])
+app.add_middleware(
+    IdempotencyMiddleware,
+    ttl_seconds=3600,
+    lock_ttl=10,
+)
+app.add_middleware(
+    SecurityHeadersMiddleware,
+    headers={
+        "Cache-Control": "no-store",
+    }
+)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-)
-app.add_middleware(ProxyHeadersMiddleware, trusted_hosts=["127.0.0.1"])
-app.add_middleware(
-    IdempotencyMiddleware,
-    ttl_seconds=3600,
-    lock_ttl=10,
 )
 app.add_middleware(GZipMiddleware, minimum_size=500)
 app.add_middleware(
@@ -95,3 +97,15 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(kyc.router)
+app.include_router(listings.router)
+
+
+if __name__ == "__main__":
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=8443,
+        ssl_keyfile="certs/localhost+2-key.pem",
+        ssl_certfile="certs/localhost+2.pem",
+        reload=True,
+    )

@@ -14,7 +14,7 @@ from fastapi.security import (
 )
 
 from passlib.context import CryptContext
-from jose import JWTError, jwt, jwe
+from jose import JWTError, jwe
 from jose.exceptions import ExpiredSignatureError
 
 from pydantic import ValidationError
@@ -34,6 +34,7 @@ oauth2_scheme = OAuth2PasswordBearer(
     tokenUrl="api/v1/auth/login",
     scopes={
         "me": "Read information about the current user."
+        "create-l: Create property listing."
     },
 )
 

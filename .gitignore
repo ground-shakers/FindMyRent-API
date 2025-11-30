@@ -10,4 +10,10 @@ wheels/
 .venv
 .env
 
+# IDE files
+.vscode/
+
+# Local ssl certificates
+certs/
+
 __init__

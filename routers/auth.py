@@ -201,7 +201,7 @@ async def verify_email_code(payload: EmailVerificationCodeValidationRequest):
 
         return VerifiedEmailResponse(
             user=UserInDB(
-                **user.model_dump(exclude=["is_active", "password"])
+                **user.model_dump(exclude=["is_active", "password"], mode="json")
             ),  # Convert to UserInDB schema
         )
     except Exception as e:

@@ -5,9 +5,10 @@ import re
 
 from pydantic import BaseModel, Field, EmailStr, field_validator, model_validator
 
-from typing import Annotated, Self
+from typing import Annotated, Self, List
 
-from services.validation import is_phone_number_valid, is_email_valid
+from models.listings import Listing
+from models.messages import Chat
 
 from fastapi import HTTPException
 from fastapi import status
@@ -23,21 +24,6 @@ class CreateUserRequest(BaseModel):
     phone_number: Annotated[str, Field(serialization_alias="phoneNumber")]
     password: Annotated[str, Field(min_length=8)]
     verify_password: Annotated[str, Field(min_length=8, serialization_alias="verifyPassword")]
-
-    # @field_validator("phone_number")
-    # def validate_phone_number(cls, v: str) -> str:
-    #     """Validate phone number format."""
-
-    #     validation_response = is_phone_number_valid(v)
-    #     is_valid = validation_response[0]
-    #     validation_description = validation_response[1]
-
-    #     if not is_valid:
-    #         raise HTTPException(
-    #             status_code=status.HTTP_400_BAD_REQUEST,
-    #             detail=validation_description,
-    #         )
-    #     return v
 
     # * Validate the password to ensure it has at least one uppercase letter,
     # * one special character, one lowercase letter, and one number
@@ -82,8 +68,8 @@ class CreateUserRequest(BaseModel):
                 detail={"message": "Passwords do not match"},
             )
         return self
-    
-    
+
+
 class CreateUserResponse(BaseModel):
     """Describes the structure of the create user response."""
 
@@ -101,3 +87,31 @@ class UserInDB(BaseModel):
     email: Annotated[EmailStr, Field(max_length=50)]
     phone_number: Annotated[str, Field(serialization_alias="phoneNumber")]
     user_type: Annotated[UserType, Field(serialization_alias="userType")]  # e.g., 'tenant', 'landlord', 'admin'
+
+
+class GetUserResponse(BaseModel):
+    """Describes the structure of the get user response."""
+
+    first_name: Annotated[
+        str, Field(max_length=50, min_length=2, serialization_alias="firstName")
+    ]
+    last_name: Annotated[
+        str, Field(max_length=50, min_length=2, serialization_alias="lastName")
+    ]
+    # Use a regular unique ascending index for email (text indexes cannot be unique)
+    email: Annotated[EmailStr, Field(max_length=50)]
+    phone_number: Annotated[str, Field(serialization_alias="phoneNumber")]
+    is_active: Annotated[bool, Field(default=True, serialization_alias="isActive")]
+    user_type: Annotated[
+        UserType, Field(serialization_alias="userType")
+    ]  # e.g., 'tenant', 'landlord', 'admin'
+    chats: Annotated[
+        List[Chat], Field(default=[])
+    ]  # List of chats the user is part of
+    verified: Annotated[bool, Field(default=False)]
+    kyc_verified: Annotated[
+        bool, Field(default=False)
+    ]  # Know Your Customer verification status
+    listings: Annotated[
+        List[str], Field(default=[])
+    ]  # List of IDs of properties listed by the landlord

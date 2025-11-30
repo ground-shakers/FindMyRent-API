@@ -14,7 +14,3 @@ class Permissions(Document):
     permissions: Annotated[
         List[str], Field(default=[])
     ]  # List of permissions for the user type
-
-    @field_serializer("id")
-    def convert_pydantic_object_id_to_string(self, id: PydanticObjectId):
-        return str(id)

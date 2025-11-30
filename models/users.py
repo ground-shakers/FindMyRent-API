@@ -25,10 +25,6 @@ class User(Document):
     is_active: Annotated[bool, Field(default=True, serialization_alias="isActive")]
     user_type: Annotated[UserType, Field(serialization_alias="userType")]  # e.g., 'tenant', 'landlord', 'admin'
 
-    @field_serializer("id")
-    def convert_pydantic_object_id_to_string(self, id: PydanticObjectId):
-        return str(id)
-
     class Settings:
         """Pydantic model settings."""
         is_root = True
@@ -39,19 +35,11 @@ class LandLord(User):
     chats: Annotated[List[Link[Chat]], Field(default=[])]  # List of chats the user is part of
     verified: Annotated[bool, Field(default=False)]
     kyc_verified: Annotated[bool, Field(default=False)]  # Know Your Customer verification status
-    listings: Annotated[List[Link[Listing]], Field(default=[])]  # List of properties listed by the landlord
+    listings: Annotated[List[str], Field(default=[])]  # List of properties listed by the landlord
     # Temporarily allow both session responses and webhook responses until data migration
     kyc_verification_trail: Annotated[List[Union[KYCWebhookResponse, CreateKYCSessionResponse]], Field(default=[])]
-
-    @field_serializer("id")
-    def convert_pydantic_object_id_to_string(self, id: PydanticObjectId):
-        return str(id)
 
 class Admin(User):
     """Admin model representing a user with administrative privileges.
     """
     chats: Annotated[List[Link[Chat]], Field(default=[])]  # List of chats the user is part of
-
-    @field_serializer("id")
-    def convert_pydantic_object_id_to_string(self, id: PydanticObjectId):
-        return str(id)
