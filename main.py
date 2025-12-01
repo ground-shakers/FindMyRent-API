@@ -67,19 +67,14 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# app.add_middleware(HTTPSRedirectMiddleware)
+app.add_middleware(HTTPSRedirectMiddleware)
 app.add_middleware(ProxyHeadersMiddleware, trusted_hosts=["127.0.0.1"])
 app.add_middleware(
     IdempotencyMiddleware,
     ttl_seconds=3600,
     lock_ttl=10,
 )
-app.add_middleware(
-    SecurityHeadersMiddleware,
-    headers={
-        "Cache-Control": "no-store",
-    }
-)
+app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

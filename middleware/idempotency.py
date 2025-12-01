@@ -10,6 +10,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi.requests import Request
 from fastapi.responses import Response, JSONResponse
 
+from fastapi import status as status_code
+
 import redis.asyncio as redis
 
 
@@ -49,6 +51,7 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
 
         idemp_key = request.headers.get("Idempotency-Key")
         if not idemp_key:
+            # TODO Raise error when no idempotency key is provided
             # no idempotency key -> proceed normally
             return await call_next(request)
 
@@ -60,7 +63,7 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
         if cached:
             # cached stored as JSON bytes
             payload: dict = json.loads(cached.decode("utf-8"))
-            status = payload.get("status", 200)
+            status = payload.get("status", status_code.HTTP_200_OK)
             headers = payload.get("headers", {})
             body_b64 = payload.get("body_b64")
             
@@ -82,7 +85,7 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
                 cached = await self._redis.get(cache_key)
                 if cached:
                     payload = json.loads(cached.decode("utf-8"))
-                    status = payload.get("status", 200)
+                    status = payload.get("status", status_code.HTTP_200_OK)
                     headers = payload.get("headers", {})
                     body_b64 = payload.get("body_b64")
                     if body_b64 is None:
@@ -95,8 +98,8 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
                         return Response(
                             content=body_bytes, status_code=status, headers=headers
                         )
-            # timed out waiting, return 202 accepted or 409 depending on desired semantics
-            return JSONResponse({"detail": "Request in progress"}, status_code=202)
+            # timed out waiting, return 202 accepted
+            return JSONResponse({"detail": "Request in progress"}, status_code=status_code.HTTP_202_ACCEPTED)
 
         # We hold the lock -> call the handler and cache its response
         try:
