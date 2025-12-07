@@ -4,11 +4,17 @@ from enum import Enum
 
 from datetime import datetime
 
-from pydantic import Field, BaseModel, field_serializer
+from pydantic import Field, BaseModel
 
-from typing import Annotated, List, Literal
-from beanie import Document, PydanticObjectId
+from typing import Annotated, List
+from beanie import Document
 
+class ListingCollectionTypes(str, Enum):
+    """Specifies whether the user wants to fetch Listings in general or the ones they have listed on FindMyRent
+    """
+    
+    GENERAL = "general"
+    OWNED = "owned"
 
 class PropertyType(str, Enum):
     """Types of property listings."""
@@ -39,7 +45,7 @@ class ListingLocation(BaseModel):
     
     
 class LandLordDetailsSummary(BaseModel):
-    landlord_id: Annotated[str, Field()]
+    landlord_id: Annotated[str, Field(serialization_alias="landlordId")]
     first_name: Annotated[str, Field()]
     last_name: Annotated[str, Field()]
 
@@ -49,12 +55,12 @@ class Listing(Document):
     price: Annotated[float, Field(gt=0)]
     location: Annotated[ListingLocation, Field()]
     bedrooms: Annotated[int, Field(ge=0, default=0)]
-    created_at: Annotated[datetime, Field(default_factory=lambda: datetime.now(pytz.utc))]
+    created_at: Annotated[datetime, Field(default_factory=lambda: datetime.now(pytz.utc), serialization_alias="createdAt")]
     landlord: Annotated[LandLordDetailsSummary, Field()]
     amenities: Annotated[List[str], Field(default=[])]
-    updated_at: Annotated[datetime, Field(default_factory=lambda: datetime.now(pytz.utc))]
-    property_type: Annotated[PropertyType, Field(default=PropertyType.SINGLE)]
+    updated_at: Annotated[datetime, Field(default_factory=lambda: datetime.now(pytz.utc), serialization_alias="updatedAt")]
+    property_type: Annotated[PropertyType, Field(default=PropertyType.SINGLE, alias="propertyType")]
     verified: Annotated[bool, Field(default=False)]
     images: Annotated[List[str], Field(default=[])]  # List of image URLs
     available: Annotated[bool, Field(default=False)]  # Availability status
-    proof_of_ownership: Annotated[List[str], Field(default=[])]  # List of URLs to proof of ownership documents
+    proof_of_ownership: Annotated[List[str], Field(default=[], serialization_alias="proofOfOwnership")]  # List of URLs to proof of ownership documents

@@ -33,8 +33,9 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(
     tokenUrl="api/v1/auth/login",
     scopes={
-        "me": "Read information about the current user."
-        "create-l: Create property listing."
+        "me": "Read information about the current user.",
+        "create-l": "Create property listing.",
+        "read-l": "Read property listing."
     },
 )
 

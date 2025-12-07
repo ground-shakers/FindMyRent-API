@@ -29,6 +29,19 @@ API_KEY = os.getenv("CLOUDINARY_API_KEY")
 
 ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png"]
 ALLOWED_PROOF_OF_OWNERSHIP_TYPES = ["application/pdf", "image/png"]
+MAX_FILE_SIZE_MB = 100 * 1024 * 1024  # 100 MB
+
+async def file_greater_than_max_size(file: UploadFile | list[UploadFile]) -> bool:
+    """
+    Check if the uploaded file exceeds the maximum allowed size.
+
+    Args:
+        file (UploadFile | list[UploadFile]): The uploaded file(s) to check.
+
+    Returns:
+        bool: True if the file is larger than the maximum size, False otherwise.
+    """
+    return file.size > MAX_FILE_SIZE_MB
 
 
 async def to_image_upload_responses(
