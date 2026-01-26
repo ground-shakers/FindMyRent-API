@@ -1,9 +1,10 @@
+from datetime import date
+
 from enum import Enum
 
-from pydantic import Field, EmailStr, BaseModel, field_serializer
+from pydantic import Field, EmailStr, BaseModel, model_validator
 from typing import Annotated, List
 
-import pymongo
 from beanie import Document, Link, Indexed, PydanticObjectId
 
 from .messages import Chat
@@ -11,7 +12,8 @@ from .listings import Listing
 from .helpers import UserType
 
 from schema.kyc import KYCWebhookResponse, CreateKYCSessionResponse
-from typing import Union
+from schema.users import UserDateOfBirth
+from typing import Union, Literal
 
 class User(Document):
     """Base model for user-related entities.
@@ -24,6 +26,8 @@ class User(Document):
     password: Annotated[str, Field(min_length=8)]
     is_active: Annotated[bool, Field(default=True, serialization_alias="isActive")]
     user_type: Annotated[UserType, Field(serialization_alias="userType")]  # e.g., 'tenant', 'landlord', 'admin'
+    date_of_birth: Annotated[UserDateOfBirth, Field(serialization_alias="dateOfBirth")]
+    gender: Annotated[Literal["male", "female", "other"], Field(max_length=6)]
 
     class Settings:
         """Pydantic model settings."""

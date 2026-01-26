@@ -34,8 +34,19 @@ oauth2_scheme = OAuth2PasswordBearer(
     tokenUrl="api/v1/auth/login",
     scopes={
         "me": "Read information about the current user.",
-        "create-l": "Create property listing.",
-        "read-l": "Read property listing."
+        "cre:listing": "Create property listing.",
+        "read:listing": "Read property listing.",
+        "cre:admin:user": "Create admin user.",
+        "del:admin:user": "Delete admin user.",
+        "upd:admin:user": "Update admin user.",
+        "read:admin:user": "Read admin user information.",
+        "ver:listing": "Verify property listing.",
+        "del:listing": "Delete property listing.",
+        "read:admin:user": "Read admin user information",
+        "read:admin:users": "Read multiple admin users",
+        "read:users": "Read multiple users",
+        "del:user": "Delete user account",
+        "read:user:analytics": "Read user analytics data",
     },
 )
 
@@ -254,10 +265,8 @@ async def get_current_user(
         User: The authenticated user.
     """
     
-    if security_scopes.scopes:
-        authenticate_value = f'Bearer scope="{security_scopes.scope_str}"'
-    else:
-        authenticate_value = "Bearer"
+
+    authenticate_value = "Bearer"
 
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <!--[if mso]>
+  <xml>
+    <o:OfficeDocumentSettings>
+      <o:AllowPNG/>
+      <o:PixelsPerInch>96</o:PixelsPerInch>
+    </o:OfficeDocumentSettings>
+  </xml>
+  <![endif]-->
+  <style>
+    body { margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; background-color: #f4f7fa; }
+    table { border-collapse: collapse; }
+    img { border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }
+    @media only screen and (max-width: 600px) {
+      .container { width: 100% !important; }
+    }
+  </style>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f4f7fa;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #f4f7fa;">
+    <tr>
+      <td align="center" style="padding: 40px 0;">
+        <!-- Container -->
+        <table role="presentation" class="container" width="600" cellspacing="0" cellpadding="0" border="0" style="max-width: 600px; background-color: #ffffff; border-radius: 12px;">
+          <!-- Header -->
+          <tr>
+            <td align="center" style="padding: 40px 20px; background-color: #667eea; border-radius: 12px 12px 0 0;">
+              <!--[if gte mso 9]>
+              <v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false" style="width:600px;height:120px;">
+              <v:fill type="gradient" color="#667eea" color2="#764ba2" angle="135"/>
+              <v:textbox inset="0,0,0,0">
+              <![endif]-->
+              <div style="color: #ffffff; text-align: center;">
+                <div style="font-size: 48px; line-height: 48px; margin-bottom: 10px;">🎉</div>
+                <h1 style="margin: 0; font-size: 28px; font-weight: 600; color: #ffffff;">Property Listing Submitted!</h1>
+              </div>
+              <!--[if gte mso 9]>
+              </v:textbox>
+              </v:rect>
+              <![endif]-->
+            </td>
+          </tr>
+          <!-- Content -->
+          <tr>
+            <td style="padding: 40px 30px;">
+              <h2 style="color: #333333; font-size: 24px; margin: 0 0 20px 0;">Thank You for Listing with FindMyRent</h2>
+              <p style="color: #666666; line-height: 1.6; font-size: 16px; margin: 0 0 25px 0;">Hello {{LANDLORD_NAME}},</p>
+              <p style="color: #666666; line-height: 1.6; font-size: 16px; margin: 0 0 25px 0;">We've successfully received your property listing submission. Your listing is now pending verification by our team.</p>
+              <!-- Badge -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                  <td align="center" style="padding: 20px 0;">
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td align="center" style="background-color: #fef3c7; color: #92400e; padding: 8px 16px; border-radius: 20px; font-weight: 600; font-size: 14px;">⏳ PENDING VERIFICATION</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              <!-- Property Details -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #f8f9fa; border-left: 4px solid #667eea; border-radius: 4px; margin: 25px 0;">
+                <tr>
+                  <td style="padding: 20px;">
+                    <h3 style="margin: 0 0 15px 0; color: #667eea; font-size: 18px;">📋 Submitted Property Details</h3>
+                    <p style="margin: 10px 0; color: #555555; font-size: 15px;"><strong style="color: #333333;">Address:</strong> {{PROPERTY_ADDRESS}}</p>
+                    <p style="margin: 10px 0; color: #555555; font-size: 15px;"><strong style="color: #333333;">City:</strong> {{PROPERTY_CITY}}, {{PROPERTY_STATE}}</p>
+                    <p style="margin: 10px 0; color: #555555; font-size: 15px;"><strong style="color: #333333;">Property Type:</strong> {{PROPERTY_TYPE}}</p>
+                    <p style="margin: 10px 0; color: #555555; font-size: 15px;"><strong style="color: #333333;">Bedrooms:</strong> {{BEDROOMS}}</p>
+                    <p style="margin: 10px 0; color: #555555; font-size: 15px;"><strong style="color: #333333;">Price:</strong> N${{PRICE}}/month</p>
+                    <p style="margin: 10px 0; color: #555555; font-size: 15px;"><strong style="color: #333333;">Listing ID:</strong> {{LISTING_ID}}</p>
+                    <p style="margin: 10px 0; color: #555555; font-size: 15px;"><strong style="color: #333333;">Submitted On:</strong> {{SUBMISSION_DATE}}</p>
+                  </td>
+                </tr>
+              </table>
+              <!-- Timeline Box -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #f0fdf4; border-left: 4px solid #10b981; border-radius: 4px; margin: 25px 0;">
+                <tr>
+                  <td style="padding: 20px;">
+                    <h3 style="color: #059669; margin: 0 0 15px 0; font-size: 18px;">⏰ What Happens Next?</h3>
+                    <ol style="margin: 0; padding-left: 20px; color: #065f46;">
+                      <li style="margin: 10px 0; line-height: 1.5;">Our verification team will review your property details and documents</li>
+                      <li style="margin: 10px 0; line-height: 1.5;">We'll verify the authenticity of your proof of ownership documents</li>
+                      <li style="margin: 10px 0; line-height: 1.5;">Once approved, your listing will go live on FindMyRent</li>
+                      <li style="margin: 10px 0; line-height: 1.5;">You'll receive an email notification about the verification status</li>
+                    </ol>
+                  </td>
+                </tr>
+              </table>
+              <!-- Info Box -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #dbeafe; border-left: 4px solid #3b82f6; border-radius: 4px; margin: 20px 0;">
+                <tr>
+                  <td style="padding: 15px;">
+                    <p style="margin: 0; color: #1e40af; font-size: 14px;">💡 Verification typically takes 24-48 hours. We'll notify you as soon as your listing is reviewed.</p>
+                  </td>
+                </tr>
+              </table>
+              <p style="color: #666666; line-height: 1.6; font-size: 16px; margin: 0 0 25px 0;">During this time, your listing is not visible to potential tenants. Once verified, it will automatically become available for viewing.</p>
+              <p style="color: #666666; line-height: 1.6; font-size: 16px; margin: 0 0 25px 0;">If you have any questions or need to make changes to your listing, please don't hesitate to contact our support team.</p>
+              <p style="color: #666666; line-height: 1.6; font-size: 16px; margin: 0 0 5px 0;">Best regards,<br>The FindMyRent Team</p>
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td align="center" style="background-color: #f8f9fa; padding: 20px; border-radius: 0 0 12px 12px;">
+              <p style="margin: 0 0 5px 0; color: #999999; font-size: 14px;">This is an automated message, please do not reply.</p>
+              <p style="margin: 0; color: #999999; font-size: 14px;">Need help? <a href="mailto:dev@ground-shakers.xyz" style="color: #667eea; text-decoration: none;">Contact Support</a></p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

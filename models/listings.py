@@ -4,10 +4,10 @@ from enum import Enum
 
 from datetime import datetime
 
-from pydantic import Field, BaseModel
+from pydantic import Field, BaseModel, EmailStr
 
 from typing import Annotated, List
-from beanie import Document
+from beanie import Document, View
 
 class ListingCollectionTypes(str, Enum):
     """Specifies whether the user wants to fetch Listings in general or the ones they have listed on FindMyRent
@@ -48,6 +48,7 @@ class LandLordDetailsSummary(BaseModel):
     landlord_id: Annotated[str, Field(serialization_alias="landlordId")]
     first_name: Annotated[str, Field()]
     last_name: Annotated[str, Field()]
+    email: Annotated[EmailStr, Field()]
 
 
 class Listing(Document):
@@ -60,7 +61,45 @@ class Listing(Document):
     amenities: Annotated[List[str], Field(default=[])]
     updated_at: Annotated[datetime, Field(default_factory=lambda: datetime.now(pytz.utc), serialization_alias="updatedAt")]
     property_type: Annotated[PropertyType, Field(default=PropertyType.SINGLE, alias="propertyType")]
-    verified: Annotated[bool, Field(default=False)]
+    verified: Annotated[bool | None, Field(default=None)]
     images: Annotated[List[str], Field(default=[])]  # List of image URLs
     available: Annotated[bool, Field(default=False)]  # Availability status
     proof_of_ownership: Annotated[List[str], Field(default=[], serialization_alias="proofOfOwnership")]  # List of URLs to proof of ownership documents
+
+class ListingStatsView(View):
+    """View for listing statistics.
+    """
+    
+    
+    total_listings: int = Field(alias="totalListings")
+    unverified_listings: int = Field(alias="unverifiedListings")
+    rejected_listings: int = Field(alias="rejectedListings")
+
+    class Settings:
+        source = Listing
+        pipeline = [
+            {
+                "$group": {
+                    "_id": None,
+                    "totalListings": {"$sum": 1},
+                    "unverifiedListings": {
+                        "$sum": {
+                            "$cond": [{"$eq": ["$verified", None]}, 1, 0]
+                        }
+                    },
+                    "rejectedListings": {
+                        "$sum": {
+                            "$cond": [{"$eq": ["$verified", False]}, 1, 0]
+                        }
+                    },
+                }
+            },
+            {
+                "$project": {
+                    "_id": 0,
+                    "totalListings": 1,
+                    "unverifiedListings": 1,
+                    "rejectedListings": 1,
+                }
+            },
+        ]

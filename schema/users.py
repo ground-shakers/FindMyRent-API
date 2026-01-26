@@ -3,11 +3,12 @@
 
 import re
 
+from datetime import date
+
 from pydantic import BaseModel, Field, EmailStr, field_validator, model_validator
 
-from typing import Annotated, Self, List
+from typing import Annotated, Self, List, Literal, Optional
 
-from models.listings import Listing
 from models.messages import Chat
 
 from fastapi import HTTPException
@@ -15,12 +16,45 @@ from fastapi import status
 
 from models.helpers import UserType
 
+class UserDateOfBirth(BaseModel):
+    """Model representing a user's date of birth.
+    """
+    day: Annotated[int, Field(ge=1, le=31)]
+    month: Annotated[int, Field(ge=1, le=12)]
+    year: Annotated[int, Field(ge=1900, le=2100)]  # Assuming reasonable year range
+
+    @model_validator(mode="after")
+    def validate_minimum_age(self) -> "UserDateOfBirth":
+        today = date.today()
+
+        try:
+            dob = date(self.year, self.month, self.day)
+        except ValueError:
+            # Invalid dates like 31 Feb
+            raise ValueError("Invalid date of birth")
+
+        age = (
+            today.year
+            - dob.year
+            - ((today.month, today.day) < (dob.month, dob.day))
+        )
+
+        if age < 18:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You must be at least 18 years old to sign up"
+            )
+
+        return self
+
 class CreateUserRequest(BaseModel):
     """Describes the structure of the create user request."""
 
     first_name: Annotated[str, Field(max_length=50, min_length=2, serialization_alias="firstName")]
     last_name: Annotated[str, Field(max_length=50, min_length=2, serialization_alias="lastName")]
     email: Annotated[EmailStr, Field(max_length=50)]
+    date_of_birth: Annotated[UserDateOfBirth, Field(serialization_alias="dateOfBirth")]
+    gender: Annotated[Literal["male", "female", "other"], Field(max_length=6)]
     phone_number: Annotated[str, Field(serialization_alias="phoneNumber")]
     password: Annotated[str, Field(min_length=8)]
     verify_password: Annotated[str, Field(min_length=8, serialization_alias="verifyPassword")]
@@ -77,6 +111,12 @@ class CreateUserResponse(BaseModel):
     email: Annotated[EmailStr, Field(description="Email address the verification code was sent to")]
     expires_in_minutes: Annotated[int, Field(serialization_alias="expiresInMinutes", description="Time in minutes before the verification code expires")]  # Time in minutes before the verification code expires
     user_id: Annotated[str, Field(default="", serialization_alias="userId", max_length=24, min_length=24, description="ID of the created user")]  # ID of the created user
+    
+    
+class CreateAdminUserResponse(BaseModel):
+    """Describes the structure of the create admin user request."""
+    message: Annotated[str, Field(default="Admin user created successfully")]
+    user: Annotated[dict, Field(description="Details of the created admin user")]
 
 class UserInDB(BaseModel):
     """Describes the structure of the user data stored in the database."""
@@ -101,6 +141,8 @@ class GetUserResponse(BaseModel):
     # Use a regular unique ascending index for email (text indexes cannot be unique)
     email: Annotated[EmailStr, Field(max_length=50)]
     phone_number: Annotated[str, Field(serialization_alias="phoneNumber")]
+    date_of_birth: Annotated[UserDateOfBirth, Field(serialization_alias="dateOfBirth")]
+    gender: Annotated[Literal["male", "female", "other"] | None, Field(default=None, max_length=6)]
     is_active: Annotated[bool, Field(default=True, serialization_alias="isActive")]
     user_type: Annotated[
         UserType, Field(serialization_alias="userType")
@@ -115,3 +157,35 @@ class GetUserResponse(BaseModel):
     listings: Annotated[
         List[str], Field(default=[])
     ]  # List of IDs of properties listed by the landlord
+
+
+class UserAnalyticsResponse(BaseModel):
+    """Describes the structure of the user analytics response."""
+    
+    total_users: Annotated[int, Field(serialization_alias="totalUsers")]
+    
+    verified_kyc_users: Annotated[int, Field(serialization_alias="verifiedKycUsers")]
+    unverified_kyc_users: Annotated[int, Field(serialization_alias="unverifiedKycUsers")]
+    kyc_completion_rate: Annotated[float, Field(serialization_alias="kycCompletionRate")]
+    
+    landlords_with_properties: Annotated[int, Field(serialization_alias="landlordsWithProperties")]
+    landlords_without_properties: Annotated[int, Field(serialization_alias="landlordsWithoutProperties")]
+    
+    top_landlord_id: Annotated[Optional[str], Field(serialization_alias="topLandlordId")]
+    
+    average_age: Annotated[Optional[float], Field(serialization_alias="averageAge")]
+    
+    age_18_25: Annotated[int, Field(serialization_alias="age18to25")]
+    age_26_35: Annotated[int, Field(serialization_alias="age26to35")]
+    age_36_45: Annotated[int, Field(serialization_alias="age36to45")]
+    age_46_60: Annotated[int, Field(serialization_alias="age46to60")]
+    age_60_plus: Annotated[int, Field(serialization_alias="age60Plus")]
+    
+    users_today: Annotated[int, Field(serialization_alias="usersToday")]
+    users_this_month: Annotated[int, Field(serialization_alias="usersThisMonth")]
+    
+    male_users: Annotated[int, Field(serialization_alias="maleUsers")]
+    female_users: Annotated[int, Field(serialization_alias="femaleUsers")]
+    
+    male_landlords: Annotated[int, Field(serialization_alias="maleLandlords")]
+    female_landlords: Annotated[int, Field(serialization_alias="femaleLandlords")]

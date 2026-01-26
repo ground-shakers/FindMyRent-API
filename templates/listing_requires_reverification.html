@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <!--[if mso]>
+  <xml>
+    <o:OfficeDocumentSettings>
+      <o:AllowPNG/>
+      <o:PixelsPerInch>96</o:PixelsPerInch>
+    </o:OfficeDocumentSettings>
+  </xml>
+  <![endif]-->
+  <style>
+    body { margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; background-color: #f4f7fa; }
+    table { border-collapse: collapse; }
+    img { border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }
+    @media only screen and (max-width: 600px) {
+      .container { width: 100% !important; }
+    }
+  </style>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f4f7fa;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #f4f7fa;">
+    <tr>
+      <td align="center" style="padding: 40px 0;">
+        <table role="presentation" class="container" width="600" cellspacing="0" cellpadding="0" border="0" style="max-width: 600px; background-color: #ffffff; border-radius: 12px;">
+          <tr>
+            <td align="center" style="padding: 40px 20px; background-color: #f59e0b; border-radius: 12px 12px 0 0;">
+              <!--[if gte mso 9]>
+              <v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false" style="width:600px;height:120px;">
+              <v:fill type="gradient" color="#f59e0b" color2="#d97706" angle="135"/>
+              <v:textbox inset="0,0,0,0">
+              <![endif]-->
+              <div style="color: #ffffff; text-align: center;">
+                <div style="font-size: 48px; line-height: 48px; margin-bottom: 10px;">🔄</div>
+                <h1 style="margin: 0; font-size: 28px; font-weight: 600; color: #ffffff;">Listing Update Requires Re-verification</h1>
+              </div>
+              <!--[if gte mso 9]>
+              </v:textbox>
+              </v:rect>
+              <![endif]-->
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 40px 30px;">
+              <h2 style="color: #333333; font-size: 24px; margin: 0 0 20px 0;">Your Listing Has Been Updated</h2>
+              <p style="color: #666666; line-height: 1.6; font-size: 16px; margin: 0 0 25px 0;">Hello {{LANDLORD_NAME}},</p>
+              <p style="color: #666666; line-height: 1.6; font-size: 16px; margin: 0 0 25px 0;">We've received your updates to your property listing. Because you made changes that affect the listing's verification status, your property will need to be re-verified by our team.</p>
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                  <td align="center" style="padding: 20px 0;">
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td align="center" style="background-color: #fef3c7; color: #92400e; padding: 8px 16px; border-radius: 20px; font-weight: 600; font-size: 14px; border: 2px solid #fbbf24;">🔍 RE-VERIFICATION REQUIRED</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #f8f9fa; border-left: 4px solid #f59e0b; border-radius: 4px; margin: 25px 0;">
+                <tr>
+                  <td style="padding: 20px;">
+                    <h3 style="margin: 0 0 15px 0; color: #f59e0b; font-size: 18px;">📋 Updated Property Details</h3>
+                    <p style="margin: 10px 0; color: #555555; font-size: 15px;"><strong style="color: #333333;">Address:</strong> {{PROPERTY_ADDRESS}}</p>
+                    <p style="margin: 10px 0; color: #555555; font-size: 15px;"><strong style="color: #333333;">City:</strong> {{PROPERTY_CITY}}, {{PROPERTY_STATE}}</p>
+                    <p style="margin: 10px 0; color: #555555; font-size: 15px;"><strong style="color: #333333;">Property Type:</strong> {{PROPERTY_TYPE}}</p>
+                    <p style="margin: 10px 0; color: #555555; font-size: 15px;"><strong style="color: #333333;">Bedrooms:</strong> {{BEDROOMS}}</p>
+                    <p style="margin: 10px 0; color: #555555; font-size: 15px;"><strong style="color: #333333;">Price:</strong> N${{PRICE}}/month</p>
+                    <p style="margin: 10px 0; color: #555555; font-size: 15px;"><strong style="color: #333333;">Listing ID:</strong> {{LISTING_ID}}</p>
+                    <p style="margin: 10px 0; color: #555555; font-size: 15px;"><strong style="color: #333333;">Updated On:</strong> {{UPDATE_DATE}}</p>
+                  </td>
+                </tr>
+              </table>
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #fff7ed; border-left: 4px solid #f59e0b; border-radius: 4px; margin: 25px 0;">
+                <tr>
+                  <td style="padding: 20px;">
+                    <h3 style="color: #c2410c; margin: 0 0 15px 0; font-size: 18px;">⚠️ Important Notice</h3>
+                    <p style="margin: 8px 0; color: #9a3412; font-size: 15px;">Your listing has been temporarily removed from public view while we verify your updates.</p>
+                    <p style="margin: 8px 0; color: #9a3412; font-size: 15px;">This ensures that all information displayed to potential tenants is accurate and verified.</p>
+                  </td>
+                </tr>
+              </table>
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #f0fdf4; border-left: 4px solid #10b981; border-radius: 4px; margin: 25px 0;">
+                <tr>
+                  <td style="padding: 20px;">
+                    <h3 style="color: #059669; margin: 0 0 15px 0; font-size: 18px;">⏰ What Happens Next?</h3>
+                    <ol style="margin: 0; padding-left: 20px; color: #065f46;">
+                      <li style="margin: 10px 0; line-height: 1.5;">Our verification team will review your updated listing</li>
+                      <li style="margin: 10px 0; line-height: 1.5;">We'll verify that all changes comply with our listing guidelines</li>
+                      <li style="margin: 10px 0; line-height: 1.5;">Once approved, your listing will be published again with the updated information</li>
+                      <li style="margin: 10px 0; line-height: 1.5;">You'll receive an email notification about the verification outcome</li>
+                    </ol>
+                  </td>
+                </tr>
+              </table>
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #dbeafe; border-left: 4px solid #3b82f6; border-radius: 4px; margin: 20px 0;">
+                <tr>
+                  <td style="padding: 15px;">
+                    <p style="margin: 0; color: #1e40af; font-size: 14px;">💡 Re-verification typically takes 24-48 hours. Your listing will remain hidden from public view until approved.</p>
+                  </td>
+                </tr>
+              </table>
+              <p style="color: #666666; line-height: 1.6; font-size: 16px; margin: 0 0 25px 0;">If you have any questions about the re-verification process or need assistance, please contact our support team.</p>
+              <p style="color: #666666; line-height: 1.6; font-size: 16px; margin: 0 0 5px 0;">Best regards,<br>The FindMyRent Team</p>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="background-color: #f8f9fa; padding: 20px; border-radius: 0 0 12px 12px;">
+              <p style="margin: 0 0 5px 0; color: #999999; font-size: 14px;">This is an automated message, please do not reply.</p>
+              <p style="margin: 0; color: #999999; font-size: 14px;">Need help? <a href="mailto:dev@ground-shakers.xyz" style="color: #667eea; text-decoration: none;">Contact Support</a></p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background-color: #f4f7fa;
+      }
+      .container {
+        max-width: 600px;
+        margin: 40px auto;
+        background: white;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+      .header {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        padding: 40px 20px;
+        text-align: center;
+        color: white;
+      }
+      .header h1 {
+        margin: 0;
+        font-size: 28px;
+        font-weight: 600;
+      }
+      .alert-icon {
+        font-size: 48px;
+        margin-bottom: 10px;
+      }
+      .content {
+        padding: 40px 30px;
+      }
+      .content h2 {
+        color: #333;
+        font-size: 24px;
+        margin-bottom: 20px;
+      }
+      .content p {
+        color: #666;
+        line-height: 1.6;
+        font-size: 16px;
+        margin-bottom: 25px;
+      }
+      .property-details {
+        background: #f8f9fa;
+        border-left: 4px solid #f59e0b;
+        padding: 20px;
+        margin: 25px 0;
+        border-radius: 4px;
+      }
+      .property-details h3 {
+        margin: 0 0 15px 0;
+        color: #f59e0b;
+        font-size: 18px;
+      }
+      .property-detail-item {
+        margin: 10px 0;
+        color: #555;
+        font-size: 15px;
+      }
+      .property-detail-item strong {
+        color: #333;
+      }
+      .reverification-badge {
+        background: #fef3c7;
+        color: #92400e;
+        padding: 8px 16px;
+        border-radius: 20px;
+        display: inline-block;
+        font-weight: 600;
+        font-size: 14px;
+        margin: 20px 0;
+        border: 2px solid #fbbf24;
+      }
+      .warning-box {
+        background: #fff7ed;
+        border-left: 4px solid #f59e0b;
+        padding: 20px;
+        margin: 25px 0;
+        border-radius: 4px;
+      }
+      .warning-box h3 {
+        color: #c2410c;
+        margin: 0 0 15px 0;
+        font-size: 18px;
+      }
+      .warning-box p {
+        margin: 8px 0;
+        color: #9a3412;
+        font-size: 15px;
+      }
+      .info-box {
+        background: #dbeafe;
+        border-left: 4px solid #3b82f6;
+        padding: 15px;
+        margin: 20px 0;
+        border-radius: 4px;
+      }
+      .info-box p {
+        margin: 0;
+        color: #1e40af;
+        font-size: 14px;
+      }
+      .timeline-box {
+        background: #f0fdf4;
+        border-left: 4px solid #10b981;
+        padding: 20px;
+        margin: 25px 0;
+        border-radius: 4px;
+      }
+      .timeline-box h3 {
+        color: #059669;
+        margin: 0 0 15px 0;
+        font-size: 18px;
+      }
+      .timeline-box ol {
+        margin: 0;
+        padding-left: 20px;
+        color: #065f46;
+      }
+      .timeline-box li {
+        margin: 10px 0;
+        line-height: 1.5;
+      }
+      .footer {
+        background: #f8f9fa;
+        padding: 20px;
+        text-align: center;
+        color: #999;
+        font-size: 14px;
+      }
+      .footer a {
+        color: #667eea;
+        text-decoration: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <div class="alert-icon">🔄</div>
+        <h1>Listing Update Requires Re-verification</h1>
+      </div>
+      <div class="content">
+        <h2>Your Listing Has Been Updated</h2>
+        <p>Hello {{LANDLORD_NAME}},</p>
+        <p>
+          We've received your updates to your property listing. Because you made
+          changes that affect the listing's verification status, your property
+          will need to be re-verified by our team.
+        </p>
+
+        <div style="text-align: center">
+          <span class="reverification-badge">🔍 RE-VERIFICATION REQUIRED</span>
+        </div>
+
+        <div class="property-details">
+          <h3>📋 Updated Property Details</h3>
+          <div class="property-detail-item">
+            <strong>Address:</strong> {{PROPERTY_ADDRESS}}
+          </div>
+          <div class="property-detail-item">
+            <strong>City:</strong> {{PROPERTY_CITY}}, {{PROPERTY_STATE}}
+          </div>
+          <div class="property-detail-item">
+            <strong>Property Type:</strong> {{PROPERTY_TYPE}}
+          </div>
+          <div class="property-detail-item">
+            <strong>Bedrooms:</strong> {{BEDROOMS}}
+          </div>
+          <div class="property-detail-item">
+            <strong>Price:</strong> N${{PRICE}}/month
+          </div>
+          <div class="property-detail-item">
+            <strong>Listing ID:</strong> {{LISTING_ID}}
+          </div>
+          <div class="property-detail-item">
+            <strong>Updated On:</strong> {{UPDATE_DATE}}
+          </div>
+        </div>
+
+        <div class="warning-box">
+          <h3>⚠️ Important Notice</h3>
+          <p>
+            Your listing has been temporarily removed from public view while we
+            verify your updates.
+          </p>
+          <p>
+            This ensures that all information displayed to potential tenants is
+            accurate and verified.
+          </p>
+        </div>
+
+        <div class="timeline-box">
+          <h3>⏰ What Happens Next?</h3>
+          <ol>
+            <li>Our verification team will review your updated information</li>
+            <li>
+              We'll verify any new documents or changes to property details
+            </li>
+            <li>
+              Once re-verified, your listing will be restored to public view
+            </li>
+            <li>
+              You'll receive an email notification about the verification status
+            </li>
+          </ol>
+        </div>
+
+        <div class="info-box">
+          <p>
+            💡 Re-verification typically takes 24-48 hours. We appreciate your
+            patience during this process.
+          </p>
+        </div>
+
+        <p>
+          If you believe this re-verification was triggered in error or if you
+          have any questions, please contact our support team.
+        </p>
+
+        <p>Best regards,<br />The FindMyRent Team</p>
+      </div>
+      <div class="footer">
+        <p>This is an automated message, please do not reply.</p>
+        <p>
+          Need help? <a href="mailto:dev@ground-shakers.xyz">Contact Support</a>
+        </p>
+      </div>
+    </div>
+  </body>
+</html>

@@ -27,6 +27,8 @@ from models.security import Permissions
 from models.messages import Message, Chat
 from models.listings import Listing
 
+from models.aggregations.users import UserAnalyticsView
+
 from routers import auth, users, kyc, listings
 
 
@@ -46,7 +48,8 @@ async def lifespan(app: FastAPI):
 
     await init_beanie(
         database=client[os.getenv("DATABASE_NAME")],
-        document_models=[User, Admin, LandLord, Message, Chat, Listing, Permissions],
+        document_models=[User, Admin, LandLord, Message, Chat, Listing, Permissions, UserAnalyticsView],
+        recreate_views=True,
     )
     logfire.info("Database initialized successfully")
 
@@ -74,7 +77,7 @@ app.add_middleware(
     ttl_seconds=3600,
     lock_ttl=10,
 )
-app.add_middleware(SecurityHeadersMiddleware)
+# app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -93,14 +96,3 @@ app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(kyc.router)
 app.include_router(listings.router)
-
-
-if __name__ == "__main__":
-    uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=8443,
-        ssl_keyfile="certs/localhost+2-key.pem",
-        ssl_certfile="certs/localhost+2.pem",
-        reload=True,
-    )

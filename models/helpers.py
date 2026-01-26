@@ -1,11 +1,14 @@
 """Contains all models commonly used across different modules."""
 from enum import Enum
 
+from datetime import date
+
 
 class UserType(str, Enum):
     """Enumeration of user types."""
     LANDLORD = "landlord"
     ADMIN = "admin"
+    SUPER_USER = "superuser"
 
 
 class EmailType(str, Enum):

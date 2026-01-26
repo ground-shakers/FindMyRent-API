@@ -66,7 +66,6 @@ CODE_EXPIRY = timedelta(minutes=10)
 
 
 email_service = get_email_service()
-template_service = get_template_service()
 verification_service = get_email_verification_service()
 
 

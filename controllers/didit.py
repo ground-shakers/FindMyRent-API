@@ -42,6 +42,7 @@ async def create_kyc_session(user: LandLord) -> dict | None:
             "expected_details": {
                 "first_name": user.first_name,
                 "last_name": user.last_name,
+                "date_of_birth": f"{user.date_of_birth.year}-{user.date_of_birth.month:02d}-{user.date_of_birth.day:02d}",
             },
             "contact_details": {
                 "email": user.email,
