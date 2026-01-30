@@ -1,7 +1,7 @@
 """Schema for KYC verification.
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from pydantic.networks import HttpUrl, EmailStr
 
 from typing import Annotated, List, Optional
@@ -16,8 +16,7 @@ class KYCResponseBase(BaseModel):
     metadata: Annotated[Optional[dict], Field(description="Additional metadata for the KYC session", default=None)]
     status: Annotated[str, Field(description="Current status of the KYC session")]
 
-    class Config:
-        extra = "allow"
+    model_config = ConfigDict(extra="allow")
 
 
 class CreateKYCSessionResponse(KYCResponseBase):

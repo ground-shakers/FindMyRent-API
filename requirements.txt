@@ -20,3 +20,7 @@ opentelemetry-instrumentation-redis>=0.59b0
 opentelemetry-instrumentation-requests>=0.59b0
 fastapi-middlewares>=0.1.1
 filetype>=1.2.0
+pytest
+pytest-asyncio
+pytest-cov
+mongomock-motor

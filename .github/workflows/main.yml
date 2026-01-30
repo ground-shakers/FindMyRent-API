@@ -40,16 +40,12 @@ jobs:
           pip install flake8
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
           flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-        continue-on-error: true
 
       - name: Run tests with coverage
         run: |
-          if [ -f "tests/__init__.py" ] || [ -f "test_*.py" ]; then
-            pytest --cov=. --cov-report=xml --cov-report=html
-          else
-            echo "No tests found - skipping test execution"
-          fi
-        continue-on-error: true
+          pytest tests/ -v --cov=. --cov-report=xml --cov-report=html --cov-fail-under=0
+        env:
+          PYTHONPATH: ${{ github.workspace }}
 
       - name: Upload coverage reports
         uses: codecov/codecov-action@v3
@@ -130,11 +126,12 @@ jobs:
           echo "Application should be running at: http://${{ secrets.EC2_HOST }}"
 
       - name: Send deployment success email
-        if: success()
+        if: ${{ always() && !cancelled() && !failure() }}
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: smtp-relay.brevo.com
           server_port: 587
+          secure: true
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
           subject: "✅ Deployment Successful - ${{ github.repository }}"
@@ -155,11 +152,12 @@ jobs:
           priority: normal
 
       - name: Send deployment failure email
-        if: failure()
+        if: ${{ always() && failure() }}
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: smtp-relay.brevo.com
           server_port: 587
+          secure: true
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
           subject: "❌ Deployment Failed - ${{ github.repository }}"
@@ -178,6 +176,7 @@ jobs:
             
             View workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           priority: high
+
 
   rollback:
     name: Rollback Deployment

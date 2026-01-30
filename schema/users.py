@@ -66,22 +66,22 @@ class CreateUserRequest(BaseModel):
     def validate_password(cls, v):
         if not re.search(r"[A-Z]", v):
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="Password must contain at least one uppercase letter",
             )
         if not re.search(r"[a-z]", v):
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="Password must contain at least one lowercase letter",
             )
         if not re.search(r"\d", v):
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="Password must contain at least one number",
             )
         if not re.search(r"[@$!%*?&#]", v):
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="Password must contain at least one special character",
             )
         return v
@@ -98,7 +98,7 @@ class CreateUserRequest(BaseModel):
             and password != verify_password
         ):
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail={"message": "Passwords do not match"},
             )
         return self
@@ -157,6 +157,24 @@ class GetUserResponse(BaseModel):
     listings: Annotated[
         List[str], Field(default=[])
     ]  # List of IDs of properties listed by the landlord
+
+
+class UpdateUserRequest(BaseModel):
+    """Describes the structure of the update user request.
+    All fields are optional to allow partial updates.
+    """
+
+    first_name: Annotated[Optional[str], Field(default=None, max_length=50, min_length=2, serialization_alias="firstName")]
+    last_name: Annotated[Optional[str], Field(default=None, max_length=50, min_length=2, serialization_alias="lastName")]
+    phone_number: Annotated[Optional[str], Field(default=None, serialization_alias="phoneNumber")]
+    gender: Annotated[Optional[Literal["male", "female", "other"]], Field(default=None, max_length=6)]
+
+
+class UpdateUserResponse(BaseModel):
+    """Describes the structure of the update user response."""
+
+    message: Annotated[str, Field(default="User updated successfully")]
+    user: Annotated[dict, Field(description="Updated user details")]
 
 
 class UserAnalyticsResponse(BaseModel):
