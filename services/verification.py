@@ -250,9 +250,7 @@ class PasswordResetService:
         self.redis = redis_client
         self.email_service = email_service
         self.template_service = template_service
-        self.frontend_base_url = frontend_base_url or os.getenv(
-            "FRONTEND_BASE_URL", "https://findmyrent.com"
-        )
+        self.frontend_base_url = frontend_base_url or os.getenv("FRONTEND_BASE_URL")
     
     def _generate_secure_token(self) -> str:
         """Generate a cryptographically secure reset token.

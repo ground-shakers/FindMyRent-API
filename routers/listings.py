@@ -196,10 +196,69 @@ async def update_property_listing(
         List[UploadFile], File(description="Proof of ownership documents")
     ] = [],
 ):
-    """Updates an existing property listing.
+    """Update an existing property listing.
     
-    Updates the specified fields of a listing. If certain fields are updated,
-    the listing verification status is reset and a re-verification email is sent.
+    Updates the specified fields of a property listing. Any changes to location,
+    proof of ownership, or images will reset the listing's verification status
+    and trigger a re-verification process.
+    
+    ## Authorization
+    - Requires `upd:listing` scope
+    - Users can only update their own listings
+    - Admins can update any listing
+    
+    ## Path Parameters
+    | Parameter | Type | Description |
+    |-----------|------|-------------|
+    | listing_id | string (24 chars) | MongoDB ObjectId of the listing |
+    
+    ## Request Body (Form Data - all fields optional)
+    | Field | Type | Description |
+    |-------|------|-------------|
+    | description | string | Updated property description |
+    | price | decimal | Updated rental price (> 0) |
+    | address | string | Updated street address |
+    | city | string | Updated city |
+    | state | string | Updated state |
+    | bedrooms | int | Updated bedroom count (> 0) |
+    | amenities | list[string] | Updated list of amenities |
+    | property_type | PropertyType | bachelor, apartment, house, etc. |
+    | images | list[file] | New property images to add |
+    | proof_of_ownership | list[file] | New ownership documents |
+    
+    ## Verification Reset Triggers
+    The following changes will reset verification status to `false`:
+    - Address, city, or state changes
+    - Proof of ownership document updates
+    - Property images updates
+    
+    ## Success Response (200 OK)
+    ```json
+    {
+        "message": "Property listing updated successfully",
+        "listing": {
+            "id": "507f1f77bcf86cd799439011",
+            "description": "Updated description",
+            "verified": false,
+            "requiresReverification": true
+        }
+    }
+    ```
+    
+    ## Error Responses
+    | Status | Description | Response Body |
+    |--------|-------------|---------------|
+    | 401 | Not authenticated | `{"detail": "Not authenticated"}` |
+    | 403 | Not owner/admin | `{"detail": "Not authorized to update this listing"}` |
+    | 404 | Listing not found | `{"detail": "Listing not found"}` |
+    | 422 | Validation error | `{"detail": "Invalid file type"}` |
+    | 500 | Internal error | `{"detail": "Failed to update listing"}` |
+    
+    ## Notes
+    - Only provided fields will be updated
+    - Image files must be valid image formats (jpg, png, webp)
+    - Proof of ownership can be images or PDFs
+    - Re-verification may take 1-3 business days
     """
     return await listings_service.update_property_listing(
         current_user=current_user,

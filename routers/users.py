@@ -35,21 +35,64 @@ router = APIRouter(
 
 @router.post("", response_model=CreateUserResponse, status_code=status.HTTP_201_CREATED)
 async def create_user(payload: CreateUserRequest, verification_service: Annotated[EmailVerificationService, Depends(get_email_verification_service)], background_tasks: BackgroundTasks, user_service: Annotated[UserService, Depends(get_user_service)]):
-    """This endpoint creates a new user in the system and sends a verification code to their email.
-    User accounts are created in an inactive state and must be verified via the code sent to their email address.
-    Only 'landlord' user types can be created via this endpoint.
+    """Register a new user account.
     
-    ## Possible Errors
-    - 409 Conflict: If a user with the provided email already exists.
-    - 500 Internal Server Error: If there is an unexpected error during user creation.
-    - 503 Service Unavailable: If there is a database connection issue.
+    Creates a new landlord user account and sends a verification email with a 6-digit
+    code. The account remains inactive until the email is verified via the
+    `/api/v1/auth/verification/email` endpoint.
     
-    ## Error response structure
+    ## Account Types
+    - Only `landlord` accounts can be created via this public endpoint
+    - Admin accounts require the `/users/admin` endpoint with proper authorization
+    
+    ## Request Body
+    | Field | Type | Required | Description |
+    |-------|------|----------|-------------|
+    | email | string (email) | Yes | Unique email address |
+    | password | string | Yes | Min 8 chars, must include uppercase, lowercase, number, special char |
+    | firstName | string | Yes | User's first name (2-50 chars) |
+    | lastName | string | Yes | User's last name (2-50 chars) |
+    | phoneNumber | string | Yes | Valid phone number |
+    | userType | string | Yes | Must be "landlord" |
+    
+    ## Example Request
     ```json
     {
-        "detail": "Sample error message"
+        "email": "landlord@example.com",
+        "password": "SecureP@ss123",
+        "firstName": "John",
+        "lastName": "Doe",
+        "phoneNumber": "+27821234567",
+        "userType": "landlord"
     }
     ```
+    
+    ## Success Response (201 Created)
+    ```json
+    {
+        "message": "User created successfully. Please check your email for verification.",
+        "user": {
+            "id": "507f1f77bcf86cd799439011",
+            "email": "landlord@example.com",
+            "firstName": "John",
+            "lastName": "Doe",
+            "verified": false
+        }
+    }
+    ```
+    
+    ## Error Responses
+    | Status | Description | Response Body |
+    |--------|-------------|---------------|
+    | 409 | Email already registered | `{"detail": "User with this email already exists"}` |
+    | 422 | Validation error | `{"detail": "Password must contain at least one uppercase letter"}` |
+    | 500 | Internal error | `{"detail": "An error occurred during registration"}` |
+    | 503 | Database unavailable | `{"detail": "Service temporarily unavailable"}` |
+    
+    ## Notes
+    - A verification code is automatically sent to the provided email
+    - The verification code expires after 10 minutes
+    - Unverified accounts cannot log in
     """
     return await user_service.create_user(payload, verification_service, background_tasks)
 
@@ -231,7 +274,47 @@ async def delete_admin_user(
     current_user: Annotated[Admin, Security(get_current_active_user, scopes=["del:admin:user"])],
     user_service: Annotated[UserService, Depends(get_user_service)],
 ):
+    """Delete an admin user account.
     
+    This endpoint allows super admins to delete admin user accounts from the system.
+    Only users with the `del:admin:user` permission scope can access this endpoint.
+    
+    ## Authorization
+    - Requires `del:admin:user` scope
+    - Only super admins can delete other admin accounts
+    - Admins cannot delete themselves via this endpoint
+    
+    ## Path Parameters
+    | Parameter | Type | Description |
+    |-----------|------|-------------|
+    | user_id | string (24 chars) | MongoDB ObjectId of the admin to delete |
+    
+    ## Request Headers
+    | Header | Required | Description |
+    |--------|----------|-------------|
+    | Authorization | Yes | Bearer token: `Bearer <access_token>` |
+    
+    ## Success Response (200 OK)
+    ```json
+    {
+        "message": "Admin user deleted successfully"
+    }
+    ```
+    
+    ## Error Responses
+    | Status | Description | Response Body |
+    |--------|-------------|---------------|
+    | 401 | Not authenticated | `{"detail": "Not authenticated"}` |
+    | 403 | Insufficient permissions | `{"detail": "Not enough permissions"}` |
+    | 404 | Admin not found | `{"detail": "Admin user not found"}` |
+    | 422 | Invalid user_id format | `{"detail": "Invalid user ID format"}` |
+    | 500 | Internal error | `{"detail": "An error occurred while deleting admin"}` |
+    
+    ## Caution
+    - This action is irreversible
+    - All associated data and permissions will be permanently removed
+    - Audit logs are maintained for compliance
+    """
     return await user_service.delete_admin_user(user_id)
 
 

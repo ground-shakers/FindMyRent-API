@@ -49,12 +49,44 @@ async def resend_verification_code(
     background_tasks: BackgroundTasks,
     auth_service: Annotated[AuthService, Depends(get_auth_service)],
 ):
-    """This endpoint sends a verification code to the user's email address.
-    If an existing code is found in Redis for the email, it will be replaced with the new code.
-
-    ### Possible use cases
-        - Send verification code when initial code expires
-        - Send new verification code on user request
+    """Send or resend a verification code to the user's email address.
+    
+    This endpoint sends a 6-digit verification code to the specified email address.
+    If an existing code is found in Redis, it will be replaced with a new code.
+    The code expires after 10 minutes.
+    
+    ## Use Cases
+    - Initial email verification after user registration
+    - Resending verification code when the initial code expires
+    - User requests a new code because they didn't receive the first one
+    
+    ## Request Body
+    | Field | Type | Required | Description |
+    |-------|------|----------|-------------|
+    | email | string (email) | Yes | Email address to send the code to |
+    
+    ## Example Request
+    ```json
+    {
+        "email": "user@example.com"
+    }
+    ```
+    
+    ## Success Response (200 OK)
+    ```json
+    {
+        "message": "Verification code sent successfully",
+        "email": "user@example.com",
+        "expires_in_minutes": 10
+    }
+    ```
+    
+    ## Error Responses
+    | Status | Description | Response Body |
+    |--------|-------------|---------------|
+    | 422 | Invalid email format | `{"detail": "value is not a valid email address"}` |
+    | 503 | Redis unavailable | `{"detail": "Service temporarily unavailable"}` |
+    | 500 | Internal error | `{"detail": "Sorry, we can't send the verification code at the moment."}` |
     """
     return await auth_service.resend_verification_code(payload, background_tasks)
 
@@ -104,7 +136,54 @@ async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     auth_service: Annotated[AuthService, Depends(get_auth_service)],
 ):
-    """Login endpoint that returns both access and refresh tokens."""
+    """Authenticate a user and obtain access and refresh tokens.
+    
+    This endpoint validates user credentials and returns a JWT access token
+    along with a refresh token for session management. The access token is used
+    for API authentication, while the refresh token is used to obtain new access
+    tokens without re-authenticating.
+    
+    ## Authentication
+    - Uses OAuth2 password flow (form data, not JSON)
+    - Access tokens expire after 30 minutes
+    - Refresh tokens are valid until explicitly revoked
+    
+    ## Request Body (Form Data)
+    | Field | Type | Required | Description |
+    |-------|------|----------|-------------|
+    | username | string | Yes | User's email address |
+    | password | string | Yes | User's password |
+    
+    ## Example Request (cURL)
+    ```bash
+    curl -X POST "/api/v1/auth/login" \
+      -H "Content-Type: application/x-www-form-urlencoded" \
+      -d "username=user@example.com&password=SecureP@ss123"
+    ```
+    
+    ## Success Response (200 OK)
+    ```json
+    {
+        "access_token": "eyJhbGciOiJIUzI1NiIs...",
+        "refresh_token": "eyJhbGciOiJIUzI1NiIs...",
+        "token_type": "Bearer",
+        "expires_in": 1800
+    }
+    ```
+    
+    ## Error Responses
+    | Status | Description | Response Body |
+    |--------|-------------|---------------|
+    | 401 | Invalid credentials | `{"detail": "Incorrect username or password"}` |
+    | 401 | Unverified account | `{"detail": "User account is not verified"}` |
+    | 422 | Missing fields | `{"detail": [{"loc": ["body", "username"], ...}]}` |
+    | 500 | Internal error | `{"detail": "An error occurred during login"}` |
+    
+    ## Usage Notes
+    - Include the access token in the `Authorization` header: `Bearer <access_token>`
+    - Store the refresh token securely to obtain new access tokens
+    - Use the `/refresh` endpoint when the access token expires
+    """
     return await auth_service.login_for_access_token(form_data)
 
 
@@ -116,7 +195,51 @@ async def refresh_access_token(
     ],
     auth_service: Annotated[AuthService, Depends(get_auth_service)],
 ):
-    """Refresh endpoint to get a new access token using a refresh token."""
+    """Obtain a new access token using a valid refresh token.
+    
+    This endpoint implements token rotation for enhanced security. When a refresh
+    token is used, both the access token and refresh token are rotated. The old
+    refresh token is invalidated to prevent replay attacks.
+    
+    ## Security Features
+    - **Token Rotation**: New refresh token issued with each refresh
+    - **Replay Detection**: Reused tokens invalidate the entire token family
+    - **Family Tracking**: Related tokens are tracked for security
+    
+    ## Request Body
+    | Field | Type | Required | Description |
+    |-------|------|----------|-------------|
+    | refresh_token | string | Yes | Valid refresh token from login or previous refresh |
+    
+    ## Example Request
+    ```json
+    {
+        "refresh_token": "eyJhbGciOiJIUzI1NiIs..."
+    }
+    ```
+    
+    ## Success Response (200 OK)
+    ```json
+    {
+        "access_token": "eyJhbGciOiJIUzI1NiIs...",
+        "refresh_token": "eyJhbGciOiJIUzI1NiIs...",
+        "token_type": "Bearer",
+        "expires_in": 1800
+    }
+    ```
+    
+    ## Error Responses
+    | Status | Description | Response Body |
+    |--------|-------------|---------------|
+    | 401 | Invalid/expired token | `{"detail": "Invalid refresh token"}` |
+    | 401 | Token reuse detected | `{"detail": "Token reuse detected. All sessions invalidated."}` |
+    | 422 | Missing token | `{"detail": [{"loc": ["body", "refresh_token"], ...}]}` |
+    
+    ## Important Notes
+    - Always use the NEW refresh token from the response for subsequent requests
+    - The old refresh token is immediately invalidated after use
+    - If token reuse is detected, all user sessions are terminated for security
+    """
     return await auth_service.refresh_access_token(payload, secure_service)
 
 
@@ -128,7 +251,46 @@ async def logout(
     ],
     auth_service: Annotated[AuthService, Depends(get_auth_service)],
 ):
-    """Logout endpoint that revokes the refresh token."""
+    """Log out the current session by revoking the refresh token.
+    
+    This endpoint invalidates the provided refresh token, effectively logging out
+    the user from the current device/session. Other active sessions remain valid.
+    
+    ## Use Cases
+    - User manually logs out from a single device
+    - Session cleanup when switching users
+    - Security measure after sensitive operations
+    
+    ## Request Body
+    | Field | Type | Required | Description |
+    |-------|------|----------|-------------|
+    | refresh_token | string | Yes | The refresh token to revoke |
+    
+    ## Example Request
+    ```json
+    {
+        "refresh_token": "eyJhbGciOiJIUzI1NiIs..."
+    }
+    ```
+    
+    ## Success Response (200 OK)
+    ```json
+    {
+        "message": "Successfully logged out"
+    }
+    ```
+    
+    ## Error Responses
+    | Status | Description | Response Body |
+    |--------|-------------|---------------|
+    | 401 | Invalid token | `{"detail": "Invalid refresh token"}` |
+    | 422 | Missing token | `{"detail": [{"loc": ["body", "refresh_token"], ...}]}` |
+    
+    ## Notes
+    - The access token remains valid until expiration (30 min max)
+    - For immediate access revocation, implement token blacklisting
+    - To log out from all devices, use `/logout-all` instead
+    """
     return await auth_service.logout(payload, secure_service)
 
 
@@ -140,7 +302,48 @@ async def logout_all_devices(
     ],
     auth_service: Annotated[AuthService, Depends(get_auth_service)],
 ):
-    """Logout from all devices by revoking all refresh tokens for the user."""
+    """Log out from all devices by revoking all refresh tokens.
+    
+    This endpoint invalidates ALL refresh tokens associated with the user,
+    forcing re-authentication on all devices. Use this for security-sensitive
+    situations like password changes or suspected account compromise.
+    
+    ## Use Cases
+    - User suspects account compromise
+    - After password change
+    - Security audit cleanup
+    - User wants to sign out everywhere
+    
+    ## Request Body
+    | Field | Type | Required | Description |
+    |-------|------|----------|-------------|
+    | refresh_token | string | Yes | Any valid refresh token for the user |
+    
+    ## Example Request
+    ```json
+    {
+        "refresh_token": "eyJhbGciOiJIUzI1NiIs..."
+    }
+    ```
+    
+    ## Success Response (200 OK)
+    ```json
+    {
+        "message": "Successfully logged out from all devices"
+    }
+    ```
+    
+    ## Error Responses
+    | Status | Description | Response Body |
+    |--------|-------------|---------------|
+    | 401 | Invalid token | `{"detail": "Invalid refresh token"}` |
+    | 422 | Missing token | `{"detail": [{"loc": ["body", "refresh_token"], ...}]}` |
+    
+    ## Security Notes
+    - All active sessions across all devices will be terminated
+    - Users will need to log in again on each device
+    - Access tokens remain valid until expiration but cannot be refreshed
+    """
     return await auth_service.logout_all_devices(payload, secure_service)
 
 

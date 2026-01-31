@@ -215,7 +215,7 @@ class PasswordResetService:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `FRONTEND_BASE_URL` | Base URL for password reset links | `https://findmyrent.com` |
+| `FRONTEND_BASE_URL` | Base URL for password reset links | `https://ground-shakers.xyz` |
 | `REDIS_HOST` | Redis server host | `localhost` |
 | `REDIS_PORT` | Redis server port | `6379` |
 
