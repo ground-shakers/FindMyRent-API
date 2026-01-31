@@ -15,7 +15,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 
 from redis import Redis
 
-from services.verification import get_email_verification_service
+from services.verification import get_email_verification_service, get_password_reset_service
 from security.refresh_token import SecureRefreshTokenService
 
 from repositories.landlord_repository import get_landlord_repository, LandLordRepository
@@ -36,7 +36,14 @@ from schema.verification import (
     EmailVerificationResponse,
     EmailVerificationRequest,
 )
-from schema.security import TokenPair, RefreshTokenRequest
+from schema.security import (
+    TokenPair,
+    RefreshTokenRequest,
+    ForgotPasswordRequest,
+    ForgotPasswordResponse,
+    ResetPasswordRequest,
+    ResetPasswordResponse,
+)
 
 from typing import Annotated
 
@@ -58,6 +65,7 @@ class AuthService:
 
     def __init__(self):
         self.verification_service = get_email_verification_service()
+        self.password_reset_service = get_password_reset_service()
         self.landlord_repo = get_landlord_repository()
         self.permissions_repo = get_permissions_repository()
 
@@ -398,6 +406,130 @@ class AuthService:
         logfire.info(f"All devices logged out for user {refresh_token_data.user_id}")
 
         return {"message": "Successfully logged out from all devices"}
+
+    # =========================================================================
+    # Password Reset Methods
+    # =========================================================================
+
+    async def forgot_password(
+        self, payload: ForgotPasswordRequest, background_tasks: BackgroundTasks
+    ):
+        """Initiates a password reset request.
+        
+        This method sends a password reset email to the user if the email exists
+        in the system. For security reasons, the response is always the same
+        whether the email exists or not (to prevent user enumeration).
+        
+        Args:
+            payload (ForgotPasswordRequest): Request containing the user's email.
+            background_tasks (BackgroundTasks): FastAPI background tasks for async email.
+        
+        Returns:
+            ForgotPasswordResponse: Success response (always, to prevent enumeration).
+            JSONResponse: Error response if rate limited or service unavailable.
+        """
+        try:
+            redis_client.ping()
+        except Exception as e:
+            logfire.error(f"Redis connection failed: {str(e)}")
+            return JSONResponse(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                content={"detail": "Service temporarily unavailable"},
+            )
+        
+        try:
+            # Check if user exists (silently - don't reveal result)
+            user = await self.landlord_repo.find_by_email(payload.email)
+            
+            if user:
+                # Only send email if user exists, but don't reveal this
+                background_tasks.add_task(
+                    self.password_reset_service.request_password_reset,
+                    payload.email
+                )
+                logfire.info(f"Password reset initiated for existing user: {payload.email}")
+            else:
+                # Log but don't reveal to user
+                logfire.info(f"Password reset requested for non-existent email: {payload.email}")
+            
+            # Always return the same response to prevent enumeration
+            return ForgotPasswordResponse(
+                message="If an account with this email exists, a password reset link has been sent.",
+                email=payload.email
+            )
+            
+        except Exception as e:
+            logfire.error(f"Error in forgot_password: {str(e)}")
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"detail": "An error occurred. Please try again later."},
+            )
+
+    async def reset_password(self, payload: ResetPasswordRequest):
+        """Resets the user's password using a valid reset token.
+        
+        This method validates the password reset token and updates the user's
+        password if valid. The token is invalidated after successful use.
+        
+        Args:
+            payload (ResetPasswordRequest): Request containing token and new password.
+        
+        Returns:
+            ResetPasswordResponse: Success response if password was reset.
+            JSONResponse: Error response if token is invalid or expired.
+        """
+        try:
+            redis_client.ping()
+        except Exception as e:
+            logfire.error(f"Redis connection failed: {str(e)}")
+            return JSONResponse(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                content={"detail": "Service temporarily unavailable"},
+            )
+        
+        try:
+            # Validate token and get email
+            email = self.password_reset_service.validate_reset_token(payload.token)
+            
+            if not email:
+                return JSONResponse(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    content={"detail": "Invalid or expired password reset token"},
+                )
+            
+            # Find user by email
+            user = await self.landlord_repo.find_by_email(email)
+            
+            if not user:
+                logfire.error(f"User not found for valid reset token: {email}")
+                return JSONResponse(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    content={"detail": "Invalid or expired password reset token"},
+                )
+            
+            # Hash the new password
+            from security.helpers import get_password_hash
+            hashed_password = get_password_hash(payload.password)
+            
+            # Update user's password
+            user.password = hashed_password
+            await self.landlord_repo.save(user)
+            
+            # Invalidate the token (one-time use)
+            self.password_reset_service.complete_password_reset(payload.token)
+            
+            logfire.info(f"Password successfully reset for user: {email}")
+            
+            return ResetPasswordResponse(
+                message="Password has been reset successfully. You can now log in with your new password."
+            )
+            
+        except Exception as e:
+            logfire.error(f"Error in reset_password: {str(e)}")
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"detail": "An error occurred. Please try again later."},
+            )
 
 
 @lru_cache()

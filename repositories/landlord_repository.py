@@ -41,6 +41,17 @@ class LandLordRepository:
             And(LandLord.email == email, LandLord.verified == False)
         )
 
+    async def find_by_email(self, email: str) -> Optional[LandLord]:
+        """Finds a landlord by email address.
+
+        Args:
+            email (str): The email address to search for.
+
+        Returns:
+            Optional[LandLord]: The landlord if found, None otherwise.
+        """
+        return await LandLord.find_one(LandLord.email == email)
+
     async def find_all(self, offset: int = 0, limit: int = 100) -> List[LandLord]:
         """Retrieves a paginated list of all landlords.
 

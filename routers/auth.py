@@ -21,7 +21,14 @@ from schema.verification import (
     EmailVerificationResponse,
     EmailVerificationRequest,
 )
-from schema.security import TokenPair, RefreshTokenRequest
+from schema.security import (
+    TokenPair,
+    RefreshTokenRequest,
+    ForgotPasswordRequest,
+    ForgotPasswordResponse,
+    ResetPasswordRequest,
+    ResetPasswordResponse,
+)
 
 from typing import Annotated
 
@@ -135,3 +142,89 @@ async def logout_all_devices(
 ):
     """Logout from all devices by revoking all refresh tokens for the user."""
     return await auth_service.logout_all_devices(payload, secure_service)
+
+
+# =============================================================================
+# Password Reset Endpoints
+# =============================================================================
+
+
+@router.post(
+    "/forgot-password",
+    status_code=status.HTTP_200_OK,
+    response_model=ForgotPasswordResponse,
+)
+async def forgot_password(
+    payload: ForgotPasswordRequest,
+    background_tasks: BackgroundTasks,
+    auth_service: Annotated[AuthService, Depends(get_auth_service)],
+):
+    """Request a password reset link.
+    
+    This endpoint initiates the password reset flow by sending a reset link
+    to the provided email address if an account exists.
+    
+    ## Security Notes
+    - For security, this endpoint always returns a success response to prevent
+      user enumeration attacks (revealing which emails are registered).
+    - Reset links expire after 1 hour.
+    - Maximum 3 reset requests per hour per email address.
+    
+    ## Request Body
+    - **email**: The email address associated with the account.
+    
+    ## Responses
+    ### Success (always returned for valid email format)
+    - status code: 200
+    - body: `{"message": "If an account with this email exists, a password reset link has been sent.", "email": "..."}`
+    
+    ### Service Unavailable
+    - status code: 503
+    - body: `{"detail": "Service temporarily unavailable"}`
+    """
+    return await auth_service.forgot_password(payload, background_tasks)
+
+
+@router.post(
+    "/reset-password",
+    status_code=status.HTTP_200_OK,
+    response_model=ResetPasswordResponse,
+)
+async def reset_password(
+    payload: ResetPasswordRequest,
+    auth_service: Annotated[AuthService, Depends(get_auth_service)],
+):
+    """Reset password using a valid reset token.
+    
+    This endpoint completes the password reset flow by validating the token
+    and updating the user's password.
+    
+    ## Security Notes
+    - Tokens are single-use and expire after 1 hour.
+    - Maximum 5 failed token validation attempts before lockout.
+    - Password must meet strength requirements (uppercase, lowercase, number, special char).
+    
+    ## Request Body
+    - **token**: The password reset token from the email link (64 characters).
+    - **password**: The new password (min 8 characters).
+    - **confirm_password**: Confirmation of the new password.
+    
+    ## Responses
+    ### Success
+    - status code: 200
+    - body: `{"message": "Password has been reset successfully. You can now log in with your new password."}`
+    
+    ### Invalid Token
+    - status code: 400
+    - body: `{"detail": "Invalid or expired password reset token"}`
+    
+    ### Password Validation Failed
+    - status code: 422
+    - body: `{"detail": "Password must contain at least one uppercase letter"}`
+    
+    ### Service Unavailable
+    - status code: 503
+    - body: `{"detail": "Service temporarily unavailable"}`
+    """
+    return await auth_service.reset_password(payload)
+

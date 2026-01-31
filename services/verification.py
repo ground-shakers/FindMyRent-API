@@ -205,3 +205,246 @@ def get_email_verification_service() -> EmailVerificationService:
         email_service=email_service,
         template_service=template_service,
     )
+
+
+# =============================================================================
+# Password Reset Service
+# =============================================================================
+
+
+class PasswordResetService:
+    """Service for handling secure password reset functionality.
+    
+    This service implements a secure password reset flow with:
+    - Cryptographically secure tokens (256-bit entropy)
+    - One-hour token expiry
+    - One-time use tokens (invalidated after use)
+    - Rate limiting to prevent abuse
+    - No user enumeration (same response for existing/non-existing emails)
+    
+    Attributes:
+        TOKEN_EXPIRY: How long reset tokens remain valid (1 hour).
+        MAX_REQUESTS_PER_HOUR: Maximum reset requests allowed per email per hour.
+        MAX_TOKEN_ATTEMPTS: Maximum failed token validation attempts.
+    """
+    
+    TOKEN_EXPIRY = timedelta(hours=1)
+    MAX_REQUESTS_PER_HOUR = 3
+    MAX_TOKEN_ATTEMPTS = 5
+    
+    def __init__(
+        self,
+        redis_client: Redis,
+        email_service: EmailService,
+        template_service: TemplateService,
+        frontend_base_url: str = None,
+    ):
+        """Initialize the PasswordResetService.
+        
+        Args:
+            redis_client: Redis client for token storage.
+            email_service: Service for sending emails.
+            template_service: Service for rendering email templates.
+            frontend_base_url: Base URL for password reset links.
+        """
+        self.redis = redis_client
+        self.email_service = email_service
+        self.template_service = template_service
+        self.frontend_base_url = frontend_base_url or os.getenv(
+            "FRONTEND_BASE_URL", "https://findmyrent.com"
+        )
+    
+    def _generate_secure_token(self) -> str:
+        """Generate a cryptographically secure reset token.
+        
+        Uses secrets.token_urlsafe() to generate a 64-character URL-safe
+        token with 256 bits of entropy.
+        
+        Returns:
+            str: A secure random token.
+        """
+        import secrets
+        return secrets.token_urlsafe(48)  # 64 characters, 256 bits
+    
+    def _get_rate_limit_key(self, email: str) -> str:
+        """Get Redis key for rate limiting by email."""
+        return f"password_reset:rate:{email}"
+    
+    def _get_token_key(self, token: str) -> str:
+        """Get Redis key for storing token data."""
+        return f"password_reset:token:{token}"
+    
+    def _get_token_attempts_key(self, token: str) -> str:
+        """Get Redis key for token validation attempts."""
+        return f"password_reset:attempts:{token}"
+    
+    def _check_rate_limit(self, email: str) -> bool:
+        """Check if the email has exceeded the rate limit.
+        
+        Args:
+            email: The email address to check.
+            
+        Returns:
+            bool: True if rate limit is exceeded, False otherwise.
+        """
+        key = self._get_rate_limit_key(email)
+        count = self.redis.get(key)
+        
+        if count and int(count) >= self.MAX_REQUESTS_PER_HOUR:
+            return True
+        return False
+    
+    def _increment_rate_limit(self, email: str):
+        """Increment the rate limit counter for an email.
+        
+        Args:
+            email: The email address to increment.
+        """
+        key = self._get_rate_limit_key(email)
+        
+        if self.redis.exists(key):
+            self.redis.incr(key)
+        else:
+            # Set with 1-hour expiry
+            self.redis.setex(key, int(self.TOKEN_EXPIRY.total_seconds()), 1)
+    
+    def request_password_reset(self, email: str) -> bool:
+        """Request a password reset for the given email.
+        
+        This method:
+        1. Checks rate limiting
+        2. Generates a secure token
+        3. Stores the token in Redis with expiry
+        4. Sends a password reset email
+        
+        For security, this method does NOT indicate whether the email
+        exists in the system. The caller should always return a success
+        message to prevent user enumeration attacks.
+        
+        Args:
+            email: The email address to send the reset link to.
+            
+        Returns:
+            bool: True if the reset was initiated (email exists and not rate limited),
+                  False if rate limited. Note: Returns True even if email doesn't exist
+                  to prevent enumeration.
+        """
+        with logfire.span(f"Password reset requested for: {email}"):
+            # Check rate limit
+            if self._check_rate_limit(email):
+                logfire.warn(f"Password reset rate limit exceeded for: {email}")
+                return False
+            
+            # Increment rate limit counter
+            self._increment_rate_limit(email)
+            
+            # Generate secure token
+            token = self._generate_secure_token()
+            
+            # Store token -> email mapping in Redis with expiry
+            token_key = self._get_token_key(token)
+            self.redis.setex(
+                token_key,
+                int(self.TOKEN_EXPIRY.total_seconds()),
+                email
+            )
+            
+            logfire.info(f"Password reset token generated for: {email}")
+            
+            # Generate reset link
+            reset_link = f"{self.frontend_base_url}/reset-password?token={token}"
+            
+            # Send email
+            html_content = self.template_service.render_password_reset_email(
+                reset_link=reset_link,
+                email=email
+            )
+            
+            success = self.email_service.send_email(
+                to=email,
+                subject="Reset Your FindMyRent Password",
+                content=html_content,
+                content_type=ContentType.HTML,
+            )
+            
+            if success:
+                logfire.info(f"Password reset email sent to: {email}")
+            else:
+                logfire.error(f"Failed to send password reset email to: {email}")
+            
+            return True
+    
+    def validate_reset_token(self, token: str) -> Optional[str]:
+        """Validate a password reset token.
+        
+        Args:
+            token: The password reset token to validate.
+            
+        Returns:
+            Optional[str]: The email address if valid, None otherwise.
+        """
+        # Check failed attempts
+        attempts_key = self._get_token_attempts_key(token)
+        attempts = self.redis.get(attempts_key)
+        
+        if attempts and int(attempts) >= self.MAX_TOKEN_ATTEMPTS:
+            logfire.warn(f"Password reset token exceeded max attempts")
+            # Invalidate the token
+            self._invalidate_token(token)
+            return None
+        
+        # Get email from token
+        token_key = self._get_token_key(token)
+        email = self.redis.get(token_key)
+        
+        if not email:
+            # Increment failed attempts
+            if self.redis.exists(attempts_key):
+                self.redis.incr(attempts_key)
+            else:
+                self.redis.setex(attempts_key, int(self.TOKEN_EXPIRY.total_seconds()), 1)
+            return None
+        
+        return email
+    
+    def complete_password_reset(self, token: str) -> Optional[str]:
+        """Complete the password reset by invalidating the token.
+        
+        This should be called AFTER the password has been successfully updated.
+        
+        Args:
+            token: The password reset token.
+            
+        Returns:
+            Optional[str]: The email address if successful, None otherwise.
+        """
+        email = self.validate_reset_token(token)
+        
+        if email:
+            # Invalidate the token (one-time use)
+            self._invalidate_token(token)
+            logfire.info(f"Password reset completed for: {email}")
+        
+        return email
+    
+    def _invalidate_token(self, token: str):
+        """Invalidate a password reset token.
+        
+        Args:
+            token: The token to invalidate.
+        """
+        self.redis.delete(self._get_token_key(token))
+        self.redis.delete(self._get_token_attempts_key(token))
+
+
+def get_password_reset_service() -> PasswordResetService:
+    """Factory function to create PasswordResetService instance.
+    
+    Returns:
+        PasswordResetService: An instance of PasswordResetService.
+    """
+    return PasswordResetService(
+        redis_client=redis_client,
+        email_service=email_service,
+        template_service=template_service,
+    )

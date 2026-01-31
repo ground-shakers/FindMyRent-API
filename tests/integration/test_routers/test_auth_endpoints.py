@@ -3,13 +3,14 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from fastapi import status
+from fastapi.responses import JSONResponse
 
 from main import app
 from services.auth_service import AuthService, get_auth_service
 from services.verification import EmailVerificationService, get_email_verification_service
 from security.refresh_token import SecureRefreshTokenService, get_secure_refresh_token_service
 from schema.verification import EmailVerificationResponse, VerifiedEmailResponse
-from schema.security import TokenPair
+from schema.security import TokenPair, ForgotPasswordResponse, ResetPasswordResponse
 from schema.users import UserInDB
 
 
@@ -319,3 +320,347 @@ class TestLogoutAllDevices:
         
         # Cleanup
         app.dependency_overrides.clear()
+
+
+# =============================================================================
+# Password Reset Tests
+# =============================================================================
+
+
+class TestForgotPassword:
+    """Tests for POST /api/v1/auth/forgot-password endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_forgot_password_success(self, async_client):
+        """Test successful forgot password request returns ForgotPasswordResponse."""
+        # Arrange
+        mock_response = ForgotPasswordResponse(
+            message="If an account with this email exists, a password reset link has been sent.",
+            email="test@example.com"
+        )
+        
+        mock_service = MagicMock(spec=AuthService)
+        mock_service.forgot_password = AsyncMock(return_value=mock_response)
+        
+        app.dependency_overrides[get_auth_service] = lambda: mock_service
+        
+        # Act
+        response = await async_client.post(
+            "/api/v1/auth/forgot-password",
+            json={"email": "test@example.com"}
+        )
+        
+        # Assert
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        assert "password reset link" in data["message"].lower()
+        assert data["email"] == "test@example.com"
+        
+        # Cleanup
+        app.dependency_overrides.clear()
+
+    @pytest.mark.asyncio
+    async def test_forgot_password_invalid_email_format(self, async_client):
+        """Test forgot password with invalid email format returns validation error."""
+        # Act
+        response = await async_client.post(
+            "/api/v1/auth/forgot-password",
+            json={"email": "not-an-email"}
+        )
+        
+        # Assert
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+
+    @pytest.mark.asyncio
+    async def test_forgot_password_missing_email(self, async_client):
+        """Test forgot password with missing email returns validation error."""
+        # Act
+        response = await async_client.post(
+            "/api/v1/auth/forgot-password",
+            json={}
+        )
+        
+        # Assert
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+
+    @pytest.mark.asyncio
+    async def test_forgot_password_empty_email(self, async_client):
+        """Test forgot password with empty email returns validation error."""
+        # Act
+        response = await async_client.post(
+            "/api/v1/auth/forgot-password",
+            json={"email": ""}
+        )
+        
+        # Assert
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+
+    @pytest.mark.asyncio
+    async def test_forgot_password_service_unavailable(self, async_client):
+        """Test forgot password when service is unavailable returns 503."""
+        # Arrange
+        mock_service = MagicMock(spec=AuthService)
+        mock_service.forgot_password = AsyncMock(
+            return_value=JSONResponse(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                content={"detail": "Service temporarily unavailable"}
+            )
+        )
+        
+        app.dependency_overrides[get_auth_service] = lambda: mock_service
+        
+        # Act
+        response = await async_client.post(
+            "/api/v1/auth/forgot-password",
+            json={"email": "test@example.com"}
+        )
+        
+        # Assert
+        assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+        
+        # Cleanup
+        app.dependency_overrides.clear()
+
+
+class TestResetPassword:
+    """Tests for POST /api/v1/auth/reset-password endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_reset_password_success(self, async_client):
+        """Test successful password reset returns ResetPasswordResponse."""
+        # Arrange
+        mock_response = ResetPasswordResponse(
+            message="Password has been reset successfully. You can now log in with your new password."
+        )
+        
+        mock_service = MagicMock(spec=AuthService)
+        mock_service.reset_password = AsyncMock(return_value=mock_response)
+        
+        app.dependency_overrides[get_auth_service] = lambda: mock_service
+        
+        # Valid 64-character token
+        valid_token = "a" * 64
+        
+        # Act
+        response = await async_client.post(
+            "/api/v1/auth/reset-password",
+            json={
+                "token": valid_token,
+                "password": "NewSecureP@ss123",
+                "confirm_password": "NewSecureP@ss123"
+            }
+        )
+        
+        # Assert
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        assert "reset successfully" in data["message"].lower()
+        
+        # Cleanup
+        app.dependency_overrides.clear()
+
+    @pytest.mark.asyncio
+    async def test_reset_password_token_too_short(self, async_client):
+        """Test reset password with token shorter than 64 characters."""
+        # Act
+        response = await async_client.post(
+            "/api/v1/auth/reset-password",
+            json={
+                "token": "short_token",
+                "password": "NewSecureP@ss123",
+                "confirm_password": "NewSecureP@ss123"
+            }
+        )
+        
+        # Assert
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+
+    @pytest.mark.asyncio
+    async def test_reset_password_missing_token(self, async_client):
+        """Test reset password with missing token returns validation error."""
+        # Act
+        response = await async_client.post(
+            "/api/v1/auth/reset-password",
+            json={
+                "password": "NewSecureP@ss123",
+                "confirm_password": "NewSecureP@ss123"
+            }
+        )
+        
+        # Assert
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+
+    @pytest.mark.asyncio
+    async def test_reset_password_passwords_dont_match(self, async_client):
+        """Test reset password with mismatched passwords returns validation error."""
+        # Valid 64-character token
+        valid_token = "a" * 64
+        
+        # Act
+        response = await async_client.post(
+            "/api/v1/auth/reset-password",
+            json={
+                "token": valid_token,
+                "password": "NewSecureP@ss123",
+                "confirm_password": "DifferentP@ss456"
+            }
+        )
+        
+        # Assert
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+
+    @pytest.mark.asyncio
+    async def test_reset_password_weak_password_no_uppercase(self, async_client):
+        """Test reset password with password missing uppercase letter."""
+        valid_token = "a" * 64
+        
+        # Act
+        response = await async_client.post(
+            "/api/v1/auth/reset-password",
+            json={
+                "token": valid_token,
+                "password": "weakpassword123!",
+                "confirm_password": "weakpassword123!"
+            }
+        )
+        
+        # Assert
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+
+    @pytest.mark.asyncio
+    async def test_reset_password_weak_password_no_lowercase(self, async_client):
+        """Test reset password with password missing lowercase letter."""
+        valid_token = "a" * 64
+        
+        # Act
+        response = await async_client.post(
+            "/api/v1/auth/reset-password",
+            json={
+                "token": valid_token,
+                "password": "WEAKPASSWORD123!",
+                "confirm_password": "WEAKPASSWORD123!"
+            }
+        )
+        
+        # Assert
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+
+    @pytest.mark.asyncio
+    async def test_reset_password_weak_password_no_number(self, async_client):
+        """Test reset password with password missing number."""
+        valid_token = "a" * 64
+        
+        # Act
+        response = await async_client.post(
+            "/api/v1/auth/reset-password",
+            json={
+                "token": valid_token,
+                "password": "WeakPassword!",
+                "confirm_password": "WeakPassword!"
+            }
+        )
+        
+        # Assert
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+
+    @pytest.mark.asyncio
+    async def test_reset_password_weak_password_no_special_char(self, async_client):
+        """Test reset password with password missing special character."""
+        valid_token = "a" * 64
+        
+        # Act
+        response = await async_client.post(
+            "/api/v1/auth/reset-password",
+            json={
+                "token": valid_token,
+                "password": "WeakPassword123",
+                "confirm_password": "WeakPassword123"
+            }
+        )
+        
+        # Assert
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+
+    @pytest.mark.asyncio
+    async def test_reset_password_password_too_short(self, async_client):
+        """Test reset password with password shorter than 8 characters."""
+        valid_token = "a" * 64
+        
+        # Act
+        response = await async_client.post(
+            "/api/v1/auth/reset-password",
+            json={
+                "token": valid_token,
+                "password": "Sh0rt!",
+                "confirm_password": "Sh0rt!"
+            }
+        )
+        
+        # Assert
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+
+    @pytest.mark.asyncio
+    async def test_reset_password_invalid_token(self, async_client):
+        """Test reset password with invalid/expired token returns error."""
+        # Arrange
+        mock_service = MagicMock(spec=AuthService)
+        mock_service.reset_password = AsyncMock(
+            return_value=JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"detail": "Invalid or expired password reset token"}
+            )
+        )
+        
+        app.dependency_overrides[get_auth_service] = lambda: mock_service
+        
+        valid_token = "a" * 64
+        
+        # Act
+        response = await async_client.post(
+            "/api/v1/auth/reset-password",
+            json={
+                "token": valid_token,
+                "password": "NewSecureP@ss123",
+                "confirm_password": "NewSecureP@ss123"
+            }
+        )
+        
+        # Assert
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "invalid" in response.json()["detail"].lower()
+        
+        # Cleanup
+        app.dependency_overrides.clear()
+
+    @pytest.mark.asyncio
+    async def test_reset_password_service_unavailable(self, async_client):
+        """Test reset password when service is unavailable returns 503."""
+        # Arrange
+        mock_service = MagicMock(spec=AuthService)
+        mock_service.reset_password = AsyncMock(
+            return_value=JSONResponse(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                content={"detail": "Service temporarily unavailable"}
+            )
+        )
+        
+        app.dependency_overrides[get_auth_service] = lambda: mock_service
+        
+        valid_token = "a" * 64
+        
+        # Act
+        response = await async_client.post(
+            "/api/v1/auth/reset-password",
+            json={
+                "token": valid_token,
+                "password": "NewSecureP@ss123",
+                "confirm_password": "NewSecureP@ss123"
+            }
+        )
+        
+        # Assert
+        assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+        
+        # Cleanup
+        app.dependency_overrides.clear()
+
