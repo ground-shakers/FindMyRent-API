@@ -36,10 +36,6 @@ async def create_kyc_verification_session(
     using the Didit identity verification service. Users must complete KYC
     verification to list properties on the platform.
     
-    ## Prerequisites
-    - User must be authenticated with a valid access token
-    - User account must be email-verified
-    
     ## Verification Flow
     1. Call this endpoint to create a verification session
     2. Redirect user to the `verification_url` in the response

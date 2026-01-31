@@ -109,19 +109,62 @@ async def create_admin_user(
     ],
     user_service: Annotated[UserService, Depends(get_user_service)]
 ):
-    """This endpoint creates a new admin user in the system and sends a verification code to their email.
-    Admin accounts are created in an active state.
-
-    ## Possible Errors
-    - 500 Internal Server Error: If there is an unexpected error during user creation.
-    - 503 Service Unavailable: If there is a database connection issue.
-
-    ## Error response structure
+    """Create a new admin user account.
+    
+    Creates a new administrator account with elevated privileges. Admin accounts
+    are created in an active state (pre-verified) and can immediately access
+    admin-only features.
+    
+    ## Request Headers
+    | Header | Required | Description |
+    |--------|----------|-------------|
+    | Authorization | Yes | Bearer token: `Bearer <access_token>` |
+    
+    ## Request Body
+    | Field | Type | Required | Description |
+    |-------|------|----------|-------------|
+    | email | string (email) | Yes | Unique email address |
+    | password | string | Yes | Strong password |
+    | firstName | string | Yes | Admin's first name |
+    | lastName | string | Yes | Admin's last name |
+    | phoneNumber | string | Yes | Valid phone number |
+    | userType | string | Yes | Must be "admin" |
+    
+    ## Example Request
     ```json
     {
-        "detail": "Sample error message"
+        "email": "admin@example.com",
+        "password": "SecureAdm!n123",
+        "firstName": "Jane",
+        "lastName": "Admin",
+        "phoneNumber": "+27821234567",
+        "userType": "admin"
     }
     ```
+    
+    ## Success Response (201 Created)
+    ```json
+    {
+        "message": "Admin user created successfully",
+        "user": {
+            "id": "507f1f77bcf86cd799439011",
+            "email": "admin@example.com",
+            "firstName": "Jane",
+            "lastName": "Admin",
+            "userType": "admin",
+            "verified": true
+        }
+    }
+    ```
+    
+    ## Error Responses
+    | Status | Description | Response Body |
+    |--------|-------------|---------------|
+    | 401 | Not authenticated | `{"detail": "Not authenticated"}` |
+    | 403 | Insufficient permissions | `{"detail": "Not enough permissions"}` |
+    | 409 | Email already exists | `{"detail": "User with this email already exists"}` |
+    | 422 | Validation error | `{"detail": [...]}` |
+    | 500 | Internal error | `{"detail": "An error occurred"}` |
     """
     return await user_service.create_admin_user(payload, current_user)
 
@@ -133,20 +176,47 @@ async def get_user(
     user_service: Annotated[UserService, Depends(get_user_service)]
 ):
     """Get details of an authenticated user.
-
-    The details returned by this endpoint can be displayed on the profile page in the app or anywhere else to provide a personalized experience for the user
     
-    ## Possible Errors
-    - 404 Not Found: If the user does not exist or is inactive.
-    - 500 Internal Server Error: If there is an unexpected error.
-    - 503 Service Unavailable: If there is a database connection issue.
+    Retrieves the profile information for a specific user. Users can only
+    access their own profile unless they have admin privileges.
     
-    ## Error response structure
+    ## Path Parameters
+    | Parameter | Type | Description |
+    |-----------|------|-------------|
+    | user_id | string (24 chars) | MongoDB ObjectId of the user |
+    
+    ## Request Headers
+    | Header | Required | Description |
+    |--------|----------|-------------|
+    | Authorization | Yes | Bearer token: `Bearer <access_token>` |
+    
+    ## Success Response (200 OK)
     ```json
     {
-        "detail": "Sample error message"
+        "id": "507f1f77bcf86cd799439011",
+        "email": "user@example.com",
+        "firstName": "John",
+        "lastName": "Doe",
+        "phoneNumber": "+27821234567",
+        "userType": "landlord",
+        "verified": true,
+        "kycVerified": false,
+        "createdAt": "2024-01-15T10:30:00Z"
     }
     ```
+    
+    ## Error Responses
+    | Status | Description | Response Body |
+    |--------|-------------|---------------|
+    | 401 | Not authenticated | `{"detail": "Not authenticated"}` |
+    | 403 | Access denied | `{"detail": "Cannot access other user's profile"}` |
+    | 404 | User not found | `{"detail": "User not found"}` |
+    | 422 | Invalid user_id | `{"detail": "Invalid user ID format"}` |
+    
+    ## Use Cases
+    - Displaying user profile page
+    - Pre-filling profile edit forms
+    - Showing user info in navigation/header
     """
     return await user_service.get_user(user_id, current_user)
 
@@ -158,20 +228,58 @@ async def get_users(
     offset: Annotated[int, Query(description="Number of users to skip for pagination", ge=0)] = 0,
     limit: Annotated[int, Query(description="Maximum number of users to return", ge=1, le=100)] = 10,
 ):
-    """Get a list of users.
-
-    The details returned by this endpoint can be displayed on the admin management page in the app or anywhere else to provide a personalized experience for the admin user
+    """Get a paginated list of all users.
     
-    ## Possible Errors
-    - 500 Internal Server Error: If there is an unexpected error.
-    - 503 Service Unavailable: If there is a database connection issue.
+    Retrieves a list of all landlord users in the system with pagination support.
+    This endpoint is designed for admin dashboards and user management interfaces.
     
-    ## Error response structure
+    ## Query Parameters
+    | Parameter | Type | Default | Description |
+    |-----------|------|---------|-------------|
+    | offset | int | 0 | Number of users to skip (for pagination) |
+    | limit | int | 10 | Maximum users to return (1-100) |
+    
+    ## Request Headers
+    | Header | Required | Description |
+    |--------|----------|-------------|
+    | Authorization | Yes | Bearer token: `Bearer <access_token>` |
+    
+    ## Example Request
+    ```
+    GET /api/v1/users?offset=0&limit=20
+    ```
+    
+    ## Success Response (200 OK)
     ```json
     {
-        "detail": "Sample error message"
+        "users": [
+            {
+                "id": "507f1f77bcf86cd799439011",
+                "email": "user1@example.com",
+                "firstName": "John",
+                "lastName": "Doe",
+                "verified": true
+            },
+            {
+                "id": "507f1f77bcf86cd799439012",
+                "email": "user2@example.com",
+                "firstName": "Jane",
+                "lastName": "Smith",
+                "verified": false
+            }
+        ],
+        "total": 150,
+        "offset": 0,
+        "limit": 20
     }
     ```
+    
+    ## Error Responses
+    | Status | Description | Response Body |
+    |--------|-------------|---------------|
+    | 401 | Not authenticated | `{"detail": "Not authenticated"}` |
+    | 403 | Insufficient permissions | `{"detail": "Not enough permissions"}` |
+    | 500 | Internal error | `{"detail": "An error occurred"}` |
     """
     return await user_service.get_users(offset, limit)
 
@@ -182,21 +290,42 @@ async def get_admin_user_details(
     user_service: Annotated[UserService, Depends(get_user_service)],
     current_user: Annotated[Admin, Security(get_current_active_user, scopes=["me", "adm:read:user"])],
 ):
-    """Get details of an admin user.
-
-    The details returned by this endpoint can be displayed on the profile page in the app or anywhere else to provide a personalized experience for the admin user
+    """Get details of a specific admin user.
     
-    ## Possible Errors
-    - 404 Not Found: If the admin user does not exist.
-    - 500 Internal Server Error: If there is an unexpected error.
-    - 503 Service Unavailable: If there is a database connection issue.
+    Retrieves the profile information for an administrator. Admins can view
+    their own profile or other admin profiles with appropriate permissions.
     
-    ## Error response structure
+    ## Path Parameters
+    | Parameter | Type | Description |
+    |-----------|------|-------------|
+    | user_id | string (24 chars) | MongoDB ObjectId of the admin |
+    
+    ## Request Headers
+    | Header | Required | Description |
+    |--------|----------|-------------|
+    | Authorization | Yes | Bearer token: `Bearer <access_token>` |
+    
+    ## Success Response (200 OK)
     ```json
     {
-        "detail": "Sample error message"
+        "id": "507f1f77bcf86cd799439011",
+        "email": "admin@example.com",
+        "firstName": "Jane",
+        "lastName": "Admin",
+        "phoneNumber": "+27821234567",
+        "userType": "admin",
+        "verified": true,
+        "createdAt": "2024-01-15T10:30:00Z"
     }
     ```
+    
+    ## Error Responses
+    | Status | Description | Response Body |
+    |--------|-------------|---------------|
+    | 401 | Not authenticated | `{"detail": "Not authenticated"}` |
+    | 403 | Insufficient permissions | `{"detail": "Not enough permissions"}` |
+    | 404 | Admin not found | `{"detail": "Admin user not found"}` |
+    | 422 | Invalid user_id | `{"detail": "Invalid user ID format"}` |
     """
     return await user_service.get_admin_user_details(user_id, current_user)
 
@@ -208,20 +337,56 @@ async def get_admin_users(
     offset: Annotated[int, Query(description="Number of admin users to skip for pagination", ge=0)] = 0,
     limit: Annotated[int, Query(description="Maximum number of admin users to return", ge=1, le=100)] = 10,
 ):
-    """Get a list of admin users.
-
-    The details returned by this endpoint can be displayed on the admin management page in the app or anywhere else to provide a personalized experience for the admin user
+    """Get a paginated list of all admin users.
     
-    ## Possible Errors
-    - 500 Internal Server Error: If there is an unexpected error.
-    - 503 Service Unavailable: If there is a database connection issue.
+    Retrieves a list of all administrator accounts with pagination support.
+    Used for admin management dashboards and access control interfaces.
     
-    ## Error response structure
+    ## Query Parameters
+    | Parameter | Type | Default | Description |
+    |-----------|------|---------|-------------|
+    | offset | int | 0 | Number of admins to skip (pagination) |
+    | limit | int | 10 | Maximum admins to return (1-100) |
+    
+    ## Request Headers
+    | Header | Required | Description |
+    |--------|----------|-------------|
+    | Authorization | Yes | Bearer token: `Bearer <access_token>` |
+    
+    ## Example Request
+    ```
+    GET /api/v1/users/admin?offset=0&limit=10
+    ```
+    
+    ## Success Response (200 OK)
     ```json
     {
-        "detail": "Sample error message"
+        "users": [
+            {
+                "id": "507f1f77bcf86cd799439011",
+                "email": "admin1@example.com",
+                "firstName": "Jane",
+                "lastName": "Admin"
+            },
+            {
+                "id": "507f1f77bcf86cd799439012",
+                "email": "admin2@example.com",
+                "firstName": "John",
+                "lastName": "Manager"
+            }
+        ],
+        "total": 5,
+        "offset": 0,
+        "limit": 10
     }
     ```
+    
+    ## Error Responses
+    | Status | Description | Response Body |
+    |--------|-------------|---------------|
+    | 401 | Not authenticated | `{"detail": "Not authenticated"}` |
+    | 403 | Insufficient permissions | `{"detail": "Not enough permissions"}` |
+    | 500 | Internal error | `{"detail": "An error occurred"}` |
     """
     return await user_service.get_admin_users(offset, limit)
 
@@ -242,22 +407,40 @@ async def delete_user(
     ],
 ):
     """Delete a user account.
-
-    This endpoint allows an admin user to delete a user account from the system.
-
-    ## Possible Errors
-    - 404 Not Found: If the user does not exist.
-    - 500 Internal Server Error: If there is an unexpected error.
-    - 503 Service Unavailable: If there is a database connection issue.
-
-    ## Error response structure
+    
+    Permanently removes a user account and all associated data from the system.
+    Users can delete their own accounts, and admins can delete any user account.
+    
+    ## Path Parameters
+    | Parameter | Type | Description |
+    |-----------|------|-------------|
+    | user_id | string (24 chars) | MongoDB ObjectId of the user |
+    
+    ## Request Headers
+    | Header | Required | Description |
+    |--------|----------|-------------|
+    | Authorization | Yes | Bearer token: `Bearer <access_token>` |
+    
+    ## Success Response (200 OK)
     ```json
     {
-        "detail": "Sample error message"
+        "message": "User deleted successfully"
     }
     ```
+    
+    ## Error Responses
+    | Status | Description | Response Body |
+    |--------|-------------|---------------|
+    | 401 | Not authenticated | `{"detail": "Not authenticated"}` |
+    | 403 | Cannot delete other users | `{"detail": "Not authorized to delete this user"}` |
+    | 404 | User not found | `{"detail": "User not found"}` |
+    | 422 | Invalid user_id | `{"detail": "Invalid user ID format"}` |
+    
+    ## Caution
+    - This action is **irreversible**
+    - All user data, listings, and history will be permanently deleted
+    - Active sessions will be invalidated
     """
-
     return await user_service.delete_user(user_id, current_user)
 
 
@@ -277,12 +460,6 @@ async def delete_admin_user(
     """Delete an admin user account.
     
     This endpoint allows super admins to delete admin user accounts from the system.
-    Only users with the `del:admin:user` permission scope can access this endpoint.
-    
-    ## Authorization
-    - Requires `del:admin:user` scope
-    - Only super admins can delete other admin accounts
-    - Admins cannot delete themselves via this endpoint
     
     ## Path Parameters
     | Parameter | Type | Description |

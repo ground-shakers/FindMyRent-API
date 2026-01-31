@@ -202,11 +202,6 @@ async def update_property_listing(
     proof of ownership, or images will reset the listing's verification status
     and trigger a re-verification process.
     
-    ## Authorization
-    - Requires `upd:listing` scope
-    - Users can only update their own listings
-    - Admins can update any listing
-    
     ## Path Parameters
     | Parameter | Type | Description |
     |-----------|------|-------------|

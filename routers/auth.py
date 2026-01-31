@@ -201,11 +201,6 @@ async def refresh_access_token(
     token is used, both the access token and refresh token are rotated. The old
     refresh token is invalidated to prevent replay attacks.
     
-    ## Security Features
-    - **Token Rotation**: New refresh token issued with each refresh
-    - **Replay Detection**: Reused tokens invalidate the entire token family
-    - **Family Tracking**: Related tokens are tracked for security
-    
     ## Request Body
     | Field | Type | Required | Description |
     |-------|------|----------|-------------|
@@ -401,11 +396,6 @@ async def reset_password(
     
     This endpoint completes the password reset flow by validating the token
     and updating the user's password.
-    
-    ## Security Notes
-    - Tokens are single-use and expire after 1 hour.
-    - Maximum 5 failed token validation attempts before lockout.
-    - Password must meet strength requirements (uppercase, lowercase, number, special char).
     
     ## Request Body
     - **token**: The password reset token from the email link (64 characters).
