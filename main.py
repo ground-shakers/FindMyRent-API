@@ -29,7 +29,7 @@ from models.listings import Listing
 
 from models.aggregations.users import UserAnalyticsView
 
-from routers import auth, users, kyc, listings
+from routers import auth, users, kyc, listings, favorites, notifications
 
 
 # Load environment variables first
@@ -68,6 +68,7 @@ app = FastAPI(
     title="FindMyRent API",
     description="A comprehensive API for managing rental services, including tenant records, landlord profiles, and rental agreements.",
     lifespan=lifespan,
+    swagger_ui_parameters={"defaultModelsExpandDepth": -1},  # Hide schemas section
 )
 
 app.add_middleware(HTTPSRedirectMiddleware)
@@ -96,3 +97,5 @@ app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(kyc.router)
 app.include_router(listings.router)
+app.include_router(favorites.router)
+app.include_router(notifications.router)

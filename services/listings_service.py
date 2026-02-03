@@ -29,6 +29,9 @@ from beanie import PydanticObjectId
 from repositories.listing_repository import get_listing_repository, ListingRepository
 from repositories.landlord_repository import get_landlord_repository, LandLordRepository
 
+from services.notifications_service import get_notifications_service
+from models.notifications import NotificationType
+
 from controllers.file_upload import (
     upload_file_to_cloudinary,
     validate_upload_results,
@@ -44,6 +47,8 @@ from services.template import TemplateService
 
 from typing import List, Dict, Tuple, Optional
 from pydantic import ValidationError
+
+from utils.masking import mask_landlord_details, mask_listings_for_user
 
 
 class ListingsService:
@@ -626,9 +631,11 @@ class ListingsService:
             if collection == ListingCollectionTypes.OWNED or is_admin_user:
                 serialized_listing = listing.model_dump(mode="json", by_alias=True)
             elif collection == ListingCollectionTypes.GENERAL:
+                # Include landlord details but mask for non-premium users
                 serialized_listing = listing.model_dump(
-                    mode="json", by_alias=True, exclude=["proof_of_ownership", "landlord"]
+                    mode="json", by_alias=True, exclude=["proof_of_ownership"]
                 )
+                serialized_listing = mask_landlord_details(serialized_listing, current_user.premium)
 
             return JSONResponse(
                 status_code=status.HTTP_200_OK,
@@ -717,9 +724,11 @@ class ListingsService:
                     for listing in listings
                 ]
             elif collection == ListingCollectionTypes.GENERAL:
+                # Include landlord details but mask for non-premium users
                 serialized_listings = [
-                    listing.model_dump(
-                        mode="json", by_alias=True, exclude=["proof_of_ownership", "landlord"]
+                    mask_landlord_details(
+                        listing.model_dump(mode="json", by_alias=True, exclude=["proof_of_ownership"]),
+                        current_user.premium
                     )
                     for listing in listings
                 ]
@@ -797,6 +806,23 @@ class ListingsService:
         )
         listing_in_db.verified = verified
         await self.listing_repo.save(listing_in_db)
+
+        # Create in-app notification for landlord
+        
+        notifications_service = get_notifications_service()
+        notification_type = NotificationType.LISTING_APPROVED if verified else NotificationType.LISTING_REJECTED
+        notification_title = "Listing Approved" if verified else "Listing Rejected"
+        notification_message = (
+            f"Your listing at {listing_in_db.location.address}, {listing_in_db.location.city} has been {'approved and is now live' if verified else 'rejected'}."
+        )
+        
+        await notifications_service.create_notification(
+            user_id=str(listing_in_db.landlord.id),
+            notification_type=notification_type,
+            title=notification_title,
+            message=notification_message,
+            related_id=str(listing_in_db.id),
+        )
 
         html_content = template_service.render_property_verification_update_email(
             landlord_name=f"{listing_in_db.landlord.first_name} {listing_in_db.landlord.last_name}",
@@ -889,6 +915,136 @@ class ListingsService:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 content={
                     "detail": "An unexpected error occurred while deleting the property listing."
+                },
+            )
+
+    async def search_property_listings(
+        self,
+        current_user: LandLord,
+        query: Optional[str] = None,
+        min_price: Optional[Decimal] = None,
+        max_price: Optional[Decimal] = None,
+        city: Optional[str] = None,
+        state: Optional[str] = None,
+        property_type: Optional[PropertyType] = None,
+        min_bedrooms: Optional[int] = None,
+        max_bedrooms: Optional[int] = None,
+        amenities: Optional[List[str]] = None,
+        available_only: bool = True,
+        offset: int = 0,
+        limit: int = 20,
+        sort_by: str = "created_at",
+        sort_order: str = "desc",
+    ):
+        """Searches property listings with various filter criteria.
+
+        Searches through verified listings and returns matches based on the
+        provided filters. All filters are optional and can be combined.
+
+        Args:
+            query (Optional[str]): Text search on property description.
+            min_price (Optional[Decimal]): Minimum rental price filter.
+            max_price (Optional[Decimal]): Maximum rental price filter.
+            city (Optional[str]): Filter by city name (case-insensitive).
+            state (Optional[str]): Filter by state name (case-insensitive).
+            property_type (Optional[PropertyType]): Filter by property type.
+            min_bedrooms (Optional[int]): Minimum number of bedrooms.
+            max_bedrooms (Optional[int]): Maximum number of bedrooms.
+            amenities (Optional[List[str]]): Required amenities (all must match).
+            available_only (bool): Only return available listings. Defaults to True.
+            offset (int): Number of listings to skip. Defaults to 0.
+            limit (int): Maximum listings to return. Defaults to 20.
+            sort_by (str): Field to sort by. Defaults to "created_at".
+            sort_order (str): Sort direction ("asc" or "desc"). Defaults to "desc".
+
+        Returns:
+            JSONResponse: Search results with listings, total count, and pagination info.
+        """
+        try:
+            with logfire.span("Searching property listings"):
+                # Validate price range
+                if min_price is not None and max_price is not None:
+                    if min_price > max_price:
+                        return JSONResponse(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            content={"detail": "min_price cannot be greater than max_price"},
+                        )
+
+                # Validate bedroom range
+                if min_bedrooms is not None and max_bedrooms is not None:
+                    if min_bedrooms > max_bedrooms:
+                        return JSONResponse(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            content={"detail": "min_bedrooms cannot be greater than max_bedrooms"},
+                        )
+
+                # Build filters dict for repository
+                filters = {
+                    "query": query,
+                    "min_price": min_price,
+                    "max_price": max_price,
+                    "city": city,
+                    "state": state,
+                    "property_type": property_type,
+                    "min_bedrooms": min_bedrooms,
+                    "max_bedrooms": max_bedrooms,
+                    "amenities": amenities,
+                    "available_only": available_only,
+                }
+
+                logfire.info(f"Searching listings with filters: {filters}")
+
+                # Execute search
+                listings, total = await self.listing_repo.search_listings(
+                    filters=filters,
+                    offset=offset,
+                    limit=limit,
+                    sort_by=sort_by,
+                    sort_order=sort_order,
+                )
+
+                logfire.info(f"Search returned {len(listings)} listings out of {total} total matching")
+
+                # Serialize listings with landlord details masked for non-premium users
+                serialized_listings = [
+                    mask_landlord_details(
+                        listing.model_dump(mode="json", by_alias=True, exclude=["proof_of_ownership"]),
+                        current_user.premium
+                    )
+                    for listing in listings
+                ]
+
+                return JSONResponse(
+                    status_code=status.HTTP_200_OK,
+                    content={
+                        "listings": serialized_listings,
+                        "total": total,
+                        "offset": offset,
+                        "limit": limit,
+                        "has_more": (offset + len(listings)) < total,
+                    },
+                )
+
+        except ConnectionFailure:
+            logfire.error("Database connection failure during listing search")
+            return JSONResponse(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                content={"detail": "Service unavailable. Please try again later."},
+            )
+        except PyMongoError as e:
+            logfire.error(f"Unexpected database error during listing search: {e}")
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={
+                    "detail": "An unexpected error occurred while searching listings."
+                },
+            )
+        except Exception as e:
+            logfire.error(f"Unexpected error during listing search: {e}")
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={
+                    "detail": "An unexpected error occurred while searching listings."
                 },
             )
 

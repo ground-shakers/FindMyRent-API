@@ -15,6 +15,7 @@ from schema.kyc import KYCWebhookResponse, CreateKYCSessionResponse
 from schema.users import UserDateOfBirth
 from typing import Union, Literal
 
+
 class User(Document):
     """Base model for user-related entities.
     """
@@ -33,15 +34,19 @@ class User(Document):
         """Pydantic model settings."""
         is_root = True
 
+
 class LandLord(User):
     """Landlord model representing a user who owns and rents out properties.
     """
     chats: Annotated[List[Link[Chat]], Field(default=[])]  # List of chats the user is part of
     verified: Annotated[bool, Field(default=False)]
-    kyc_verified: Annotated[bool, Field(default=False)]  # Know Your Customer verification status
+    kyc_verified: Annotated[bool, Field(default=False, serialization_alias="kycVerified")]  # Know Your Customer verification status
     listings: Annotated[List[str], Field(default=[])]  # List of properties listed by the landlord
+    favorites: Annotated[List[str], Field(default=[])]  # List of saved/favorited listing IDs
+    premium: Annotated[bool, Field(default=False)]  # Premium subscription status
     # Temporarily allow both session responses and webhook responses until data migration
     kyc_verification_trail: Annotated[List[Union[KYCWebhookResponse, CreateKYCSessionResponse]], Field(default=[])]
+
 
 class Admin(User):
     """Admin model representing a user with administrative privileges.

@@ -113,6 +113,101 @@ class ListingRepository:
         """
         await listing.delete()
 
+    async def search_listings(
+        self,
+        filters: dict,
+        offset: int = 0,
+        limit: int = 20,
+        sort_by: str = "created_at",
+        sort_order: str = "desc",
+    ) -> tuple[list[Listing], int]:
+        """Searches listings with dynamic filters.
+
+        Builds a MongoDB query from the provided filters and returns matching
+        verified listings with pagination and sorting.
+
+        Args:
+            filters (dict): Dictionary of filter criteria.
+            offset (int): Number of records to skip. Defaults to 0.
+            limit (int): Maximum number of records to return. Defaults to 20.
+            sort_by (str): Field to sort by. Defaults to "created_at".
+            sort_order (str): Sort direction ("asc" or "desc"). Defaults to "desc".
+
+        Returns:
+            tuple[list[Listing], int]: List of matching listings and total count.
+        """
+        # Build query conditions - always filter verified listings only
+        query_conditions = [Listing.verified == True]
+
+        # Text search on description
+        if filters.get("query"):
+            query_conditions.append(
+                {"$expr": {"$regexMatch": {
+                    "input": "$description",
+                    "regex": filters["query"],
+                    "options": "i"
+                }}}
+            )
+
+        # Price range filters
+        if filters.get("min_price") is not None:
+            query_conditions.append(Listing.price >= float(filters["min_price"]))
+        if filters.get("max_price") is not None:
+            query_conditions.append(Listing.price <= float(filters["max_price"]))
+
+        # Location filters (case-insensitive)
+        if filters.get("city"):
+            query_conditions.append(
+                {"location.city": {"$regex": f"^{filters['city']}$", "$options": "i"}}
+            )
+        if filters.get("state"):
+            query_conditions.append(
+                {"location.state": {"$regex": f"^{filters['state']}$", "$options": "i"}}
+            )
+
+        # Property type filter
+        if filters.get("property_type"):
+            query_conditions.append(Listing.property_type == filters["property_type"])
+
+        # Bedroom range filters
+        if filters.get("min_bedrooms") is not None:
+            query_conditions.append(Listing.bedrooms >= filters["min_bedrooms"])
+        if filters.get("max_bedrooms") is not None:
+            query_conditions.append(Listing.bedrooms <= filters["max_bedrooms"])
+
+        # Amenities filter - listing must have ALL specified amenities
+        if filters.get("amenities"):
+            query_conditions.append({"amenities": {"$all": filters["amenities"]}})
+
+        # Availability filter
+        if filters.get("available_only", True):
+            query_conditions.append(Listing.available == True)
+
+        # Build sort direction
+        sort_direction = -1 if sort_order == "desc" else 1
+        
+        # Map sort field names
+        sort_field_map = {
+            "price": "price",
+            "created_at": "created_at",
+            "bedrooms": "bedrooms",
+        }
+        sort_field = sort_field_map.get(sort_by, "created_at")
+
+        # Execute query with count
+        query = Listing.find(*query_conditions)
+        total = await query.count()
+        
+        listings = (
+            await query
+            .sort([(sort_field, sort_direction)])
+            .skip(offset)
+            .limit(limit)
+            .to_list()
+        )
+
+        return listings, total
+
 
 @lru_cache()
 def get_listing_repository() -> ListingRepository:

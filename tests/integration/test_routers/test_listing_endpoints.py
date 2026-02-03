@@ -417,3 +417,282 @@ class TestDeletePropertyListing:
         
         # Cleanup
         app.dependency_overrides.clear()
+
+
+class TestSearchPropertyListings:
+    """Tests for GET /api/v1/listings/search endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_search_listings_no_filters_success(self, async_client, override_auth_landlord):
+        """Test search without filters returns listings with pagination metadata."""
+        # Arrange
+        override_auth_landlord()
+        
+        mock_listings_service = MagicMock(spec=ListingsService)
+        mock_listings_service.search_property_listings = AsyncMock(return_value=JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={
+                "listings": [{"id": "507f1f77bcf86cd799439011", "description": "Test"}],
+                "total": 1,
+                "offset": 0,
+                "limit": 20,
+                "has_more": False
+            }
+        ))
+        
+        app.dependency_overrides[get_listings_service] = lambda: mock_listings_service
+        
+        # Act
+        response = await async_client.get("/api/v1/listings/search")
+        
+        # Assert
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        assert "listings" in data
+        assert "total" in data
+        assert "offset" in data
+        assert "limit" in data
+        assert "has_more" in data
+        
+        # Cleanup
+        app.dependency_overrides.clear()
+
+    @pytest.mark.asyncio
+    async def test_search_listings_by_city(self, async_client, override_auth_landlord):
+        """Test search filtered by city returns matching listings."""
+        # Arrange
+        override_auth_landlord()
+        
+        mock_listings_service = MagicMock(spec=ListingsService)
+        mock_listings_service.search_property_listings = AsyncMock(return_value=JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"listings": [], "total": 0, "offset": 0, "limit": 20, "has_more": False}
+        ))
+        
+        app.dependency_overrides[get_listings_service] = lambda: mock_listings_service
+        
+        # Act
+        response = await async_client.get("/api/v1/listings/search?city=Johannesburg")
+        
+        # Assert
+        assert response.status_code == status.HTTP_200_OK
+        
+        # Cleanup
+        app.dependency_overrides.clear()
+
+    @pytest.mark.asyncio
+    async def test_search_listings_by_price_range(self, async_client, override_auth_landlord):
+        """Test search filtered by price range."""
+        # Arrange
+        override_auth_landlord()
+        
+        mock_listings_service = MagicMock(spec=ListingsService)
+        mock_listings_service.search_property_listings = AsyncMock(return_value=JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"listings": [], "total": 0, "offset": 0, "limit": 20, "has_more": False}
+        ))
+        
+        app.dependency_overrides[get_listings_service] = lambda: mock_listings_service
+        
+        # Act
+        response = await async_client.get("/api/v1/listings/search?min_price=1000&max_price=5000")
+        
+        # Assert
+        assert response.status_code == status.HTTP_200_OK
+        
+        # Cleanup
+        app.dependency_overrides.clear()
+
+    @pytest.mark.asyncio
+    async def test_search_listings_by_property_type(self, async_client, override_auth_landlord):
+        """Test search filtered by property type."""
+        # Arrange
+        override_auth_landlord()
+        
+        mock_listings_service = MagicMock(spec=ListingsService)
+        mock_listings_service.search_property_listings = AsyncMock(return_value=JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"listings": [], "total": 0, "offset": 0, "limit": 20, "has_more": False}
+        ))
+        
+        app.dependency_overrides[get_listings_service] = lambda: mock_listings_service
+        
+        # Act
+        response = await async_client.get("/api/v1/listings/search?property_type=flat")
+        
+        # Assert
+        assert response.status_code == status.HTTP_200_OK
+        
+        # Cleanup
+        app.dependency_overrides.clear()
+
+    @pytest.mark.asyncio
+    async def test_search_listings_by_bedrooms(self, async_client, override_auth_landlord):
+        """Test search filtered by bedroom range."""
+        # Arrange
+        override_auth_landlord()
+        
+        mock_listings_service = MagicMock(spec=ListingsService)
+        mock_listings_service.search_property_listings = AsyncMock(return_value=JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"listings": [], "total": 0, "offset": 0, "limit": 20, "has_more": False}
+        ))
+        
+        app.dependency_overrides[get_listings_service] = lambda: mock_listings_service
+        
+        # Act
+        response = await async_client.get("/api/v1/listings/search?min_bedrooms=2&max_bedrooms=4")
+        
+        # Assert
+        assert response.status_code == status.HTTP_200_OK
+        
+        # Cleanup
+        app.dependency_overrides.clear()
+
+    @pytest.mark.asyncio
+    async def test_search_listings_by_amenities(self, async_client, override_auth_landlord):
+        """Test search filtered by amenities returns matching listings."""
+        # Arrange
+        override_auth_landlord()
+        
+        mock_listings_service = MagicMock(spec=ListingsService)
+        mock_listings_service.search_property_listings = AsyncMock(return_value=JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"listings": [], "total": 0, "offset": 0, "limit": 20, "has_more": False}
+        ))
+        
+        app.dependency_overrides[get_listings_service] = lambda: mock_listings_service
+        
+        # Act
+        response = await async_client.get("/api/v1/listings/search?amenities=pool&amenities=gym")
+        
+        # Assert
+        assert response.status_code == status.HTTP_200_OK
+        
+        # Cleanup
+        app.dependency_overrides.clear()
+
+    @pytest.mark.asyncio
+    async def test_search_listings_combined_filters(self, async_client, override_auth_landlord):
+        """Test search with multiple filters combined."""
+        # Arrange
+        override_auth_landlord()
+        
+        mock_listings_service = MagicMock(spec=ListingsService)
+        mock_listings_service.search_property_listings = AsyncMock(return_value=JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"listings": [], "total": 0, "offset": 0, "limit": 20, "has_more": False}
+        ))
+        
+        app.dependency_overrides[get_listings_service] = lambda: mock_listings_service
+        
+        # Act
+        response = await async_client.get(
+            "/api/v1/listings/search?city=Cape+Town&min_price=2000&max_price=8000&property_type=flat&min_bedrooms=2"
+        )
+        
+        # Assert
+        assert response.status_code == status.HTTP_200_OK
+        
+        # Cleanup
+        app.dependency_overrides.clear()
+
+    @pytest.mark.asyncio
+    async def test_search_listings_with_pagination(self, async_client, override_auth_landlord):
+        """Test search respects pagination parameters."""
+        # Arrange
+        override_auth_landlord()
+        
+        mock_listings_service = MagicMock(spec=ListingsService)
+        mock_listings_service.search_property_listings = AsyncMock(return_value=JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"listings": [], "total": 100, "offset": 20, "limit": 10, "has_more": True}
+        ))
+        
+        app.dependency_overrides[get_listings_service] = lambda: mock_listings_service
+        
+        # Act
+        response = await async_client.get("/api/v1/listings/search?offset=20&limit=10")
+        
+        # Assert
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        assert data["offset"] == 20
+        assert data["limit"] == 10
+        assert data["has_more"] == True
+        
+        # Cleanup
+        app.dependency_overrides.clear()
+
+    @pytest.mark.asyncio
+    async def test_search_listings_with_sorting(self, async_client, override_auth_landlord):
+        """Test search respects sort parameters."""
+        # Arrange
+        override_auth_landlord()
+        
+        mock_listings_service = MagicMock(spec=ListingsService)
+        mock_listings_service.search_property_listings = AsyncMock(return_value=JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"listings": [], "total": 0, "offset": 0, "limit": 20, "has_more": False}
+        ))
+        
+        app.dependency_overrides[get_listings_service] = lambda: mock_listings_service
+        
+        # Act
+        response = await async_client.get("/api/v1/listings/search?sort_by=price&sort_order=asc")
+        
+        # Assert
+        assert response.status_code == status.HTTP_200_OK
+        
+        # Cleanup
+        app.dependency_overrides.clear()
+
+    @pytest.mark.asyncio
+    async def test_search_listings_empty_returns_200(self, async_client, override_auth_landlord):
+        """Test search with no results returns 200 with empty array, not 404."""
+        # Arrange
+        override_auth_landlord()
+        
+        mock_listings_service = MagicMock(spec=ListingsService)
+        mock_listings_service.search_property_listings = AsyncMock(return_value=JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"listings": [], "total": 0, "offset": 0, "limit": 20, "has_more": False}
+        ))
+        
+        app.dependency_overrides[get_listings_service] = lambda: mock_listings_service
+        
+        # Act
+        response = await async_client.get("/api/v1/listings/search?city=NonExistentCity")
+        
+        # Assert
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        assert data["listings"] == []
+        assert data["total"] == 0
+        
+        # Cleanup
+        app.dependency_overrides.clear()
+
+    @pytest.mark.asyncio
+    async def test_search_listings_invalid_price_range(self, async_client, override_auth_landlord):
+        """Test search with min_price > max_price returns 400."""
+        # Arrange
+        override_auth_landlord()
+        
+        mock_listings_service = MagicMock(spec=ListingsService)
+        mock_listings_service.search_property_listings = AsyncMock(return_value=JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"detail": "min_price cannot be greater than max_price"}
+        ))
+        
+        app.dependency_overrides[get_listings_service] = lambda: mock_listings_service
+        
+        # Act
+        response = await async_client.get("/api/v1/listings/search?min_price=5000&max_price=1000")
+        
+        # Assert
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        
+        # Cleanup
+        app.dependency_overrides.clear()
+

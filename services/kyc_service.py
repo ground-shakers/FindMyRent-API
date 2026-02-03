@@ -382,6 +382,19 @@ class KycService:
 
                     await self.landlord_repo.save(user_in_db)
 
+                    # Create in-app notification for KYC verification success
+                    from services.notifications_service import get_notifications_service
+                    from models.notifications import NotificationType
+                    
+                    notifications_service = get_notifications_service()
+                    await notifications_service.create_notification(
+                        user_id=str(user_in_db.id),
+                        notification_type=NotificationType.KYC_VERIFIED,
+                        title="KYC Verification Successful",
+                        message="Your identity has been verified successfully. You can now create and manage property listings.",
+                        related_id=None,
+                    )
+
                     logfire.info(f"KYC verified for user: {user_in_db.email}")
                 else:
                     user_in_db.kyc_verification_trail.append(

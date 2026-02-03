@@ -35,6 +35,146 @@ router = APIRouter(
 )
 
 
+@router.get("/search")
+async def search_property_listings(
+    listings_service: Annotated[ListingsService, Depends(get_listings_service)],
+    current_user: Annotated[
+        LandLord, Security(get_current_active_user, scopes=["me"])
+    ],
+    query: Annotated[
+        Optional[str],
+        Query(description="Text search on property description", max_length=200),
+    ] = None,
+    min_price: Annotated[
+        Optional[Decimal],
+        Query(description="Minimum rental price", gt=0),
+    ] = None,
+    max_price: Annotated[
+        Optional[Decimal],
+        Query(description="Maximum rental price", gt=0),
+    ] = None,
+    city: Annotated[
+        Optional[str],
+        Query(description="Filter by city (case-insensitive)", max_length=100),
+    ] = None,
+    state: Annotated[
+        Optional[str],
+        Query(description="Filter by state (case-insensitive)", max_length=100),
+    ] = None,
+    property_type: Annotated[
+        Optional[PropertyType],
+        Query(description="Filter by property type"),
+    ] = None,
+    min_bedrooms: Annotated[
+        Optional[int],
+        Query(description="Minimum number of bedrooms", ge=0),
+    ] = None,
+    max_bedrooms: Annotated[
+        Optional[int],
+        Query(description="Maximum number of bedrooms", ge=0),
+    ] = None,
+    amenities: Annotated[
+        Optional[List[str]],
+        Query(description="Required amenities (listing must have all)"),
+    ] = None,
+    available_only: Annotated[
+        bool,
+        Query(description="Only return available listings"),
+    ] = True,
+    offset: Annotated[
+        int,
+        Query(description="Number of listings to skip for pagination", ge=0),
+    ] = 0,
+    limit: Annotated[
+        int,
+        Query(description="Maximum listings to return (1-100)", ge=1, le=100),
+    ] = 20,
+    sort_by: Annotated[
+        str,
+        Query(description="Field to sort by: price, created_at, bedrooms"),
+    ] = "created_at",
+    sort_order: Annotated[
+        str,
+        Query(description="Sort order: asc or desc"),
+    ] = "desc",
+):
+    """Search and filter property listings.
+    
+    Searches through verified, public listings with various filter criteria.
+    All filters are optional and can be combined for precise results.
+    
+    ## Filter Options
+    | Parameter | Type | Description |
+    |-----------|------|-------------|
+    | query | string | Text search on description (partial match) |
+    | min_price | decimal | Minimum rental price |
+    | max_price | decimal | Maximum rental price |
+    | city | string | Filter by city (case-insensitive) |
+    | state | string | Filter by state (case-insensitive) |
+    | property_type | enum | single, shared, studio, flat, room |
+    | min_bedrooms | int | Minimum bedrooms |
+    | max_bedrooms | int | Maximum bedrooms |
+    | amenities | list[string] | Required amenities (all must match) |
+    | available_only | bool | Only available listings (default: true) |
+    
+    ## Pagination & Sorting
+    | Parameter | Default | Description |
+    |-----------|---------|-------------|
+    | offset | 0 | Skip N listings |
+    | limit | 20 | Return max N listings (1-100) |
+    | sort_by | created_at | Sort field: price, created_at, bedrooms |
+    | sort_order | desc | Sort direction: asc, desc |
+    
+    ## Example Requests
+    ```
+    GET /api/v1/listings/search?city=Johannesburg&min_price=1000&max_price=5000
+    GET /api/v1/listings/search?property_type=flat&min_bedrooms=2&sort_by=price&sort_order=asc
+    GET /api/v1/listings/search?amenities=pool&amenities=gym
+    ```
+    
+    ## Success Response (200 OK)
+    ```json
+    {
+        "listings": [...],
+        "total": 150,
+        "offset": 0,
+        "limit": 20,
+        "has_more": true
+    }
+    ```
+    
+    ## Error Responses
+    | Status | Description | Response Body |
+    |--------|-------------|---------------|
+    | 400 | Invalid range | `{"detail": "min_price cannot be greater than max_price"}` |
+    | 500 | Internal error | `{"detail": "An unexpected error occurred"}` |
+    | 503 | Service unavailable | `{"detail": "Service unavailable"}` |
+    
+    ## Notes
+    - Only verified listings are returned
+    - Landlord contact details are masked for non-premium users
+    - Premium users see full contact details
+    - Empty results return an empty array, not 404
+    """
+    return await listings_service.search_property_listings(
+        current_user=current_user,
+        query=query,
+        min_price=min_price,
+        max_price=max_price,
+        city=city,
+        state=state,
+        property_type=property_type,
+        min_bedrooms=min_bedrooms,
+        max_bedrooms=max_bedrooms,
+        amenities=amenities,
+        available_only=available_only,
+        offset=offset,
+        limit=limit,
+        sort_by=sort_by,
+        sort_order=sort_order,
+    )
+
+
 @router.post("")
 async def create_property_listing(
     description: Annotated[

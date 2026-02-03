@@ -23,7 +23,7 @@ from beanie import PydanticObjectId
 
 from security.helpers import get_current_active_user
 
-from typing import Annotated
+from typing import Annotated, Optional
 from pydantic import ValidationError
 
 from security.helpers import get_password_hash
@@ -167,6 +167,60 @@ async def create_admin_user(
     | 500 | Internal error | `{"detail": "An error occurred"}` |
     """
     return await user_service.create_admin_user(payload, current_user)
+
+
+@router.get("/me", response_model=GetUserResponse)
+async def get_current_user_profile(
+    current_user: Annotated[User, Security(get_current_active_user, scopes=["me"])],
+):
+    """Get the currently authenticated user's profile.
+    
+    Returns the profile information for the authenticated user making the request.
+    No user ID is required - the identity is determined from the access token.
+    
+    ## Request Headers
+    | Header | Required | Description |
+    |--------|----------|-------------|
+    | Authorization | Yes | Bearer token: `Bearer <access_token>` |
+    
+    ## Success Response (200 OK)
+    ```json
+    {
+        "id": "507f1f77bcf86cd799439011",
+        "email": "user@example.com",
+        "firstName": "John",
+        "lastName": "Doe",
+        "phoneNumber": "+27821234567",
+        "userType": "landlord",
+        "verified": true,
+        "kycVerified": false,
+        "premium": false
+    }
+    ```
+    
+    ## Error Responses
+    | Status | Description | Response Body |
+    |--------|-------------|---------------|
+    | 401 | Not authenticated | `{"detail": "Not authenticated"}` |
+    | 401 | Invalid token | `{"detail": "Could not validate credentials"}` |
+    
+    ## Use Cases
+    - Displaying user profile page
+    - Pre-filling profile edit forms
+    - Checking premium/verification status
+    - Showing user info in navigation/header
+    """
+    # Serialize user data - exclude sensitive fields
+    user_data = current_user.model_dump(
+        mode="json",
+        by_alias=True,
+        exclude=["password", "kyc_verification_trail"]
+    )
+    
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content=user_data
+    )
 
 
 @router.get("/{user_id}", response_model=GetUserResponse)
