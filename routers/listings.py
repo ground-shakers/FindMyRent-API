@@ -20,6 +20,7 @@ from fastapi.responses import JSONResponse
 
 from models.users import LandLord, Admin
 from models.listings import PropertyType, ListingCollectionTypes
+from schema.listings import ListingAnalyticsResponse
 
 from security.helpers import get_current_active_user
 from services.email import get_email_service, EmailService
@@ -173,6 +174,33 @@ async def search_property_listings(
         sort_by=sort_by,
         sort_order=sort_order,
     )
+
+
+@router.get("/stats/analytics", response_model=ListingAnalyticsResponse)
+async def get_listing_analytics(
+    current_user: Annotated[
+        Admin, Security(get_current_active_user, scopes=["read:listing:analytics"])
+    ],
+    listings_service: Annotated[ListingsService, Depends(get_listings_service)],
+):
+    """Get aggregated analytics data for all listings.
+
+    This endpoint provides comprehensive analytics about listing status, pricing,
+    types, and growth metrics. Only accessible to admin users.
+    
+    ## Success Response (200 OK)
+    Returns detailed analytics stats including:
+    - Total listings
+    - Status breakdown (verified, unverified, rejected)
+    - Pricing stats (average, min, max)
+    - Property type breakdown
+    - Growth metrics (today, this month)
+
+    ## Possible Errors
+    - 404 Not Found: If no analytics data is available.
+    - 500 Internal Server Error: If there is an unexpected error.
+    """
+    return await listings_service.get_analytics_for_listings()
 
 
 @router.post("")

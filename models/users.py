@@ -13,7 +13,7 @@ from .helpers import UserType
 
 from schema.kyc import KYCWebhookResponse, CreateKYCSessionResponse
 from schema.users import UserDateOfBirth
-from typing import Union, Literal
+from typing import Union, Literal, Optional
 
 
 class User(Document):
@@ -29,6 +29,7 @@ class User(Document):
     user_type: Annotated[UserType, Field(serialization_alias="userType")]  # e.g., 'tenant', 'landlord', 'admin'
     date_of_birth: Annotated[UserDateOfBirth, Field(serialization_alias="dateOfBirth")]
     gender: Annotated[Literal["male", "female", "other"], Field(max_length=6)]
+    device_token: Annotated[Optional[str], Field(default=None, exclude=True)]  # FCM device token
 
     class Settings:
         """Pydantic model settings."""

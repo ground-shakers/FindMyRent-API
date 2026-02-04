@@ -6,6 +6,7 @@ from typing import Optional, List
 from beanie import PydanticObjectId
 
 from models.listings import Listing
+from models.aggregations.listings import ListingAnalyticsView
 
 
 class ListingRepository:
@@ -14,6 +15,14 @@ class ListingRepository:
     This class encapsulates all database operations for the Listing entity,
     providing a clean separation between business logic and data access.
     """
+
+    async def get_analytics(self) -> List[ListingAnalyticsView]:
+        """Retrieves aggregated listing analytics.
+
+        Returns:
+            List[ListingAnalyticsView]: List containing the single analytics result document.
+        """
+        return await ListingAnalyticsView.find().to_list()
 
     async def get_by_id(self, listing_id: str) -> Optional[Listing]:
         """Retrieves a listing by its unique identifier.

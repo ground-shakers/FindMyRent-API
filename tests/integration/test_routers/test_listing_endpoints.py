@@ -696,3 +696,74 @@ class TestSearchPropertyListings:
         # Cleanup
         app.dependency_overrides.clear()
 
+
+class TestGetListingAnalytics:
+    """Tests for GET /api/v1/listings/stats/analytics endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_get_analytics_success(self, async_client, override_auth_admin):
+        """Test successful analytics retrieval."""
+        # Arrange
+        override_auth_admin()
+        
+        mock_listings_service = MagicMock(spec=ListingsService)
+        mock_analytics_data = {
+            "totalListings": 100,
+            "verifiedListings": 80,
+            "unverifiedListings": 20,
+            "rejectedListings": 0,
+            "availableListings": 90,
+            "averagePrice": 2000.0,
+            "minPrice": 500.0,
+            "maxPrice": 5000.0,
+            "singleListings": 50,
+            "sharedListings": 30,
+            "studioListings": 10,
+            "flatListings": 10,
+            "roomListings": 0,
+            "listingsToday": 2,
+            "listingsThisMonth": 15
+        }
+        
+        mock_listings_service.get_analytics_for_listings = AsyncMock(return_value=JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content=mock_analytics_data
+        ))
+        
+        app.dependency_overrides[get_listings_service] = lambda: mock_listings_service
+        
+        # Act
+        response = await async_client.get("/api/v1/listings/stats/analytics")
+        
+        # Assert
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        assert data["totalListings"] == 100
+        assert data["averagePrice"] == 2000.0
+        
+        # Cleanup
+        app.dependency_overrides.clear()
+
+    @pytest.mark.asyncio
+    async def test_get_analytics_no_data(self, async_client, override_auth_admin):
+        """Test analytics when no data available returns 404."""
+        # Arrange
+        override_auth_admin()
+        
+        mock_listings_service = MagicMock(spec=ListingsService)
+        mock_listings_service.get_analytics_for_listings = AsyncMock(return_value=JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={"detail": "No analytics data available"}
+        ))
+        
+        app.dependency_overrides[get_listings_service] = lambda: mock_listings_service
+        
+        # Act
+        response = await async_client.get("/api/v1/listings/stats/analytics")
+        
+        # Assert
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        
+        # Cleanup
+        app.dependency_overrides.clear()
+

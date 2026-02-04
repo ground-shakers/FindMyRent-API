@@ -243,6 +243,28 @@ class TestListingRepository:
         # Assert
         mock_listing.delete.assert_called_once()
 
+    # =========================================================================
+    # get_analytics tests
+    # =========================================================================
+
+    @pytest.mark.asyncio
+    async def test_get_analytics_returns_data(self, repository):
+        """Test retrieving analytics data."""
+        # Arrange
+        mock_view = MagicMock()
+        mock_cursor = MagicMock()
+        mock_cursor.to_list = AsyncMock(return_value=[mock_view])
+        
+        with patch("repositories.listing_repository.ListingAnalyticsView") as MockView:
+            MockView.find.return_value = mock_cursor
+            
+            # Act
+            result = await repository.get_analytics()
+            
+            # Assert
+            assert result == [mock_view]
+            MockView.find.assert_called_once()
+
 
 class TestGetListingRepository:
     """Test cases for get_listing_repository factory function."""

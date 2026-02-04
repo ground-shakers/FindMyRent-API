@@ -12,6 +12,7 @@ from decimal import Decimal
 
 from fastapi import status, UploadFile, BackgroundTasks
 from fastapi.responses import JSONResponse
+from schema.listings import ListingAnalyticsResponse
 
 from models.users import LandLord, Admin
 from models.listings import (
@@ -1046,6 +1047,35 @@ class ListingsService:
                 content={
                     "detail": "An unexpected error occurred while searching listings."
                 },
+            )
+
+    async def get_analytics_for_listings(self) -> ListingAnalyticsResponse | JSONResponse:
+        """Retrieves aggregated analytics data for all listings.
+
+        Returns:
+            ListingAnalyticsResponse: The detailed analytics data.
+            JSONResponse: Error response if retrieval fails.
+        """
+        try:
+            with logfire.span("Fetching listing analytics"):
+                analytics_results = await self.listing_repo.get_analytics()
+                
+                if not analytics_results:
+                    logfire.warning("No listing analytics data available")
+                    # Return zeroed analytics if no data exists
+                    return JSONResponse(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        content={"detail": "No analytics data available"},
+                    )
+                
+                analytics_data = analytics_results[0]
+                return ListingAnalyticsResponse(**analytics_data.model_dump(mode="json"))
+
+        except Exception as e:
+            logfire.error(f"Error fetching listing analytics: {e}")
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"detail": "Failed to retrieve listing analytics"},
             )
 
 

@@ -7,7 +7,7 @@ import logfire
 from fastapi import APIRouter, status, Depends, Security, Query, Path, Body
 from fastapi.responses import JSONResponse
 
-from models.users import LandLord, Admin
+from models.users import LandLord, Admin, User
 from models.notifications import NotificationType
 
 from security.helpers import get_current_active_user
@@ -25,6 +25,11 @@ class CreateNotificationRequest(BaseModel):
     title: Annotated[str, Field(max_length=100, description="Notification title")]
     message: Annotated[str, Field(max_length=500, description="Notification message")]
     related_id: Annotated[Optional[str], Field(default=None, max_length=24, serialization_alias="relatedId", description="Related entity ID")]
+
+
+class DeviceTokenRequest(BaseModel):
+    """Request body for registering a device token."""
+    token: Annotated[str, Field(description="FCM Device Token")]
 
 
 router = APIRouter(
@@ -130,6 +135,33 @@ async def get_unread_count(
     ```
     """
     return await notifications_service.get_unread_count(str(current_user.id))
+
+
+@router.post("/device-token")
+async def register_device_token(
+    payload: DeviceTokenRequest,
+    current_user: Annotated[
+        User, Security(get_current_active_user, scopes=["me"])
+    ],
+    notifications_service: Annotated[NotificationsService, Depends(get_notifications_service)],
+):
+    """Register device token for push notifications.
+    
+    Saves the user's FCM device token to enable push notifications.
+    
+    ## Request Body
+    | Field | Type | Required | Description |
+    |-------|------|----------|-------------|
+    | token | string | Yes | FCM device token |
+    
+    ## Success Response (200 OK)
+    ```json
+    {
+        "message": "Device token registered successfully"
+    }
+    ```
+    """
+    return await notifications_service.register_device_token(current_user, payload.token)
 
 
 @router.patch("/{notification_id}/read")

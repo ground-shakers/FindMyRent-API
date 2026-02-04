@@ -15,6 +15,7 @@ from beanie import PydanticObjectId
 from pymongo.errors import ConnectionFailure, PyMongoError
 
 from models.notifications import Notification, NotificationType
+from models.users import User
 
 
 class NotificationsService:
@@ -241,6 +242,33 @@ class NotificationsService:
             return JSONResponse(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 content={"detail": "An unexpected error occurred."},
+            )
+
+    async def register_device_token(self, user: User, token: str):
+        """Registers a device token for the user.
+        
+        Args:
+            user: The user object (Landlord or Admin).
+            token: The FCM device token.
+            
+        Returns:
+            JSONResponse: Success message.
+        """
+        try:
+            user.device_token = token
+            await user.save()
+            
+            logfire.info(f"Registered device token for user {user.id}")
+            
+            return JSONResponse(
+                status_code=status.HTTP_200_OK,
+                content={"message": "Device token registered successfully"},
+            )
+        except Exception as e:
+            logfire.error(f"Error registering device token for user {user.id}: {e}")
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"detail": "Failed to register device token"},
             )
 
 

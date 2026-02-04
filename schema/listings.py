@@ -1,6 +1,6 @@
 """Pydantic schemas for property listing search and filter functionality."""
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Annotated, Optional, List, Literal
 from decimal import Decimal
 
@@ -100,8 +100,7 @@ class ListingSearchResult(BaseModel):
     available: bool
     created_at: str = Field(alias="createdAt")
     
-    class Config:
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class ListingSearchResponse(BaseModel):
@@ -112,3 +111,33 @@ class ListingSearchResponse(BaseModel):
     offset: Annotated[int, Field(description="Current offset")]
     limit: Annotated[int, Field(description="Current limit")]
     has_more: Annotated[bool, Field(description="Whether more results exist")]
+
+
+class ListingAnalyticsResponse(BaseModel):
+    """Response schema for listing analytics data."""
+    
+    total_listings: int = Field(alias="totalListings")
+    
+    # Status Stats
+    verified_listings: int = Field(alias="verifiedListings")
+    unverified_listings: int = Field(alias="unverifiedListings")
+    rejected_listings: int = Field(alias="rejectedListings")
+    available_listings: int = Field(alias="availableListings")
+    
+    # Pricing Stats
+    average_price: float = Field(alias="averagePrice")
+    min_price: float = Field(alias="minPrice")
+    max_price: float = Field(alias="maxPrice")
+    
+    # Property Types
+    single_listings: int = Field(alias="singleListings")
+    shared_listings: int = Field(alias="sharedListings")
+    studio_listings: int = Field(alias="studioListings")
+    flat_listings: int = Field(alias="flatListings")
+    room_listings: int = Field(alias="roomListings")
+    
+    # Growth Stats
+    listings_today: int = Field(alias="listingsToday")
+    listings_this_month: int = Field(alias="listingsThisMonth")
+    
+    model_config = ConfigDict(populate_by_name=True)

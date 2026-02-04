@@ -10,6 +10,9 @@ wheels/
 .venv
 .env
 
+# Firebase configs
+firebaseServiceAccountKey.json
+
 # IDE files
 .vscode/
 

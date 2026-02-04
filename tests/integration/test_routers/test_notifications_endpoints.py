@@ -184,3 +184,87 @@ class TestMarkAllAsRead:
         
         # Cleanup
         app.dependency_overrides.clear()
+
+
+class TestRegisterDeviceToken:
+    """Tests for POST /api/v1/notifications/device-token endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_register_device_token_success(self, async_client, override_auth_landlord):
+        """Test registering device token."""
+        # Arrange
+        override_auth_landlord()
+        
+        mock_service = MagicMock(spec=NotificationsService)
+        mock_service.register_device_token = AsyncMock(return_value=JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"message": "Device token registered successfully"}
+        ))
+        
+        app.dependency_overrides[get_notifications_service] = lambda: mock_service
+        
+        # Act
+        response = await async_client.post(
+            "/api/v1/notifications/device-token",
+            json={"token": "test-token-123"}
+        )
+        
+        # Assert
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()["message"] == "Device token registered successfully"
+        
+        # Cleanup
+        app.dependency_overrides.clear()
+
+
+class TestCreateNotificationAdmin:
+    """Tests for POST /api/v1/notifications/admin endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_create_notification_admin_success(self, async_client, override_auth_admin):
+        """Test admin creating notification."""
+        # Arrange
+        override_auth_admin()
+        
+        mock_service = MagicMock(spec=NotificationsService)
+        mock_notification_data = {
+            "id": "507f1f77bcf86cd799439011",
+            "type": "system_announcement",
+            "title": "System Update",
+            "message": "Maintenance tonight",
+            "isRead": False,
+            "createdAt": "2024-01-01T10:00:00"
+        }
+        
+        # Mock only the method called. Note: return value isn't strictly model_dumped if service does it?
+        # Service returns Notification object. Endpoints converts to JSONResponse.
+        
+        # Wait, the endpoint code: creates notification, returns JSONResponse.
+        # But wait, endpoint: `notification = await service.create_notification(...)`, then returns JSONResponse.
+        # So I mock `service.create_notification` to return a Notification-like object (Pydantic model or DB model).
+        # Since I'm mocking the service, I should make it return something that has `.model_dump(mode="json", by_alias=True)`.
+        
+        mock_notification = MagicMock()
+        mock_notification.model_dump.return_value = mock_notification_data
+        
+        mock_service.create_notification = AsyncMock(return_value=mock_notification)
+        
+        app.dependency_overrides[get_notifications_service] = lambda: mock_service
+        
+        payload = {
+            "type": "system_announcement",
+            "title": "System Update",
+            "message": "Maintenance tonight"
+        }
+        
+        # Act
+        response = await async_client.post("/api/v1/notifications/admin", json=payload)
+        
+        # Assert
+        assert response.status_code == status.HTTP_201_CREATED
+        data = response.json()
+        assert data["message"] == "Notification created successfully"
+        assert data["notification"]["title"] == "System Update"
+        
+        # Cleanup
+        app.dependency_overrides.clear()

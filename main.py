@@ -28,6 +28,7 @@ from models.messages import Message, Chat
 from models.listings import Listing
 
 from models.aggregations.users import UserAnalyticsView
+from models.aggregations.listings import ListingAnalyticsView
 
 from routers import auth, users, kyc, listings, favorites, notifications
 
@@ -48,7 +49,7 @@ async def lifespan(app: FastAPI):
 
     await init_beanie(
         database=client[os.getenv("DATABASE_NAME")],
-        document_models=[User, Admin, LandLord, Message, Chat, Listing, Permissions, UserAnalyticsView],
+        document_models=[User, Admin, LandLord, Message, Chat, Listing, Permissions, UserAnalyticsView, ListingAnalyticsView],
         recreate_views=True,
     )
     logfire.info("Database initialized successfully")
