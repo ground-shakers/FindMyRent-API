@@ -170,8 +170,12 @@ def validate_kyc_data(kyc_data: dict[str, str | int | dict | None]) -> KYCWebhoo
                 personal_number=id_verification_details.get("personal_number"),
                 portrait_image=id_verification_details.get("portrait_image"),
                 front_image=id_verification_details.get("front_image"),
+                front_image_camera_front=id_verification_details.get("front_image_camera_front"),
+                front_image_camera_front_face_match_score=id_verification_details.get("front_image_camera_front_face_match_score"),
                 front_video=id_verification_details.get("front_video"),
                 back_image=id_verification_details.get("back_image"),
+                back_image_camera_front=id_verification_details.get("back_image_camera_front"),
+                back_image_camera_front_face_match_score=id_verification_details.get("back_image_camera_front_face_match_score"),
                 back_video=id_verification_details.get("back_video"),
                 full_front_image=id_verification_details.get("full_front_image"),
                 full_back_image=id_verification_details.get("full_back_image"),
@@ -191,6 +195,7 @@ def validate_kyc_data(kyc_data: dict[str, str | int | dict | None]) -> KYCWebhoo
                 marital_status=id_verification_details.get("marital_status"),
                 nationality=id_verification_details.get("nationality"),
                 parsed_address=validated_parsed_address_details,
+                extra_fields=id_verification_details.get("extra_fields"),
                 extra_files=extra_files_raw,
                 warnings=[
                     IDVerificationWarnings(**warning)
@@ -225,6 +230,13 @@ def validate_kyc_data(kyc_data: dict[str, str | int | dict | None]) -> KYCWebhoo
                 expected_details=expected_details,
                 contact_details=contact_details,
                 callback=callback,
+                aml=session_decision.get("aml"),
+                database_validation=session_decision.get("database_validation"),
+                email=session_decision.get("email"),
+                nfc=session_decision.get("nfc"),
+                phone=session_decision.get("phone"),
+                poa=session_decision.get("poa"),
+                questionnaire=session_decision.get("questionnaire"),
                 id_verification=validated_id_verification_details,
                 reviews=[
                     KYCSessionReviewDetails(**review)

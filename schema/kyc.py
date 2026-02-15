@@ -74,6 +74,9 @@ class FaceMatchDetails(BaseModel):
     target_image: Annotated[
         Optional[HttpUrl], Field(description="Target image URL", default=None)
     ]
+    source_image_session_id: Annotated[
+        Optional[str], Field(description="Session ID for the source image", default=None)
+    ]
     warnings: Annotated[List, Field(description="Face match warnings", default=[])]
 
 
@@ -102,8 +105,11 @@ class ParsedAddressDetails(BaseModel):
 
 class IDVerificationWarnings(BaseModel):
     risk: Annotated[str, Field(description="Risk level associated with the verification")]
+    feature: Annotated[
+        Optional[str], Field(description="Feature that generated the warning", default=None)
+    ]
     additional_data: Annotated[
-        Optional[dict[str, str | int | float] | str | int | float], 
+        Optional[dict[str, str | int | float | None] | str | int | float], 
         Field(
             description="Additional data related to the verification warnings. Can be a dict or scalar value.",
             default=None
@@ -142,8 +148,12 @@ class IDVerificationDetails(BaseModel):
     ]
     portrait_image: Annotated[Optional[HttpUrl], Field(description="URL of the portrait image", default=None)]
     front_image: Annotated[Optional[HttpUrl], Field(description="URL of the front image", default=None)]
+    front_image_camera_front: Annotated[Optional[HttpUrl], Field(description="URL of the front image from front camera", default=None)]
+    front_image_camera_front_face_match_score: Annotated[Optional[float], Field(description="Face match score for front image front camera", default=None)]
     front_video: Annotated[Optional[HttpUrl], Field(description="URL of the front video", default=None)]
     back_image: Annotated[Optional[HttpUrl], Field(description="URL of the back image", default=None)]
+    back_image_camera_front: Annotated[Optional[HttpUrl], Field(description="URL of the back image from front camera", default=None)]
+    back_image_camera_front_face_match_score: Annotated[Optional[float], Field(description="Face match score for back image front camera", default=None)]
     back_video: Annotated[Optional[HttpUrl], Field(description="URL of the back video", default=None)]
     full_front_image: Annotated[Optional[HttpUrl], Field(description="URL of the full front image", default=None)]
     full_back_image: Annotated[Optional[HttpUrl], Field(description="URL of the full back image", default=None)]
@@ -169,6 +179,9 @@ class IDVerificationDetails(BaseModel):
     parsed_address: Annotated[
         Optional[ParsedAddressDetails],
         Field(description="Parsed address details of the user", default=None),
+    ]
+    extra_fields: Annotated[
+        Optional[dict], Field(description="Extra document fields extracted during verification", default=None)
     ]
     extra_files: Annotated[
         List[HttpUrl],
@@ -203,6 +216,13 @@ class KYCVerificationDecisionDetails(KYCResponseBase):
     callback: Annotated[
         HttpUrl | None, Field(description="Redirect URL once verification is complete", default=None)
     ]
+    aml: Annotated[Optional[dict], Field(description="AML check details", default=None)]
+    database_validation: Annotated[Optional[dict], Field(description="Database validation details", default=None)]
+    email: Annotated[Optional[dict], Field(description="Email verification details", default=None)]
+    nfc: Annotated[Optional[dict], Field(description="NFC verification details", default=None)]
+    phone: Annotated[Optional[dict], Field(description="Phone verification details", default=None)]
+    poa: Annotated[Optional[dict], Field(description="Proof of address details", default=None)]
+    questionnaire: Annotated[Optional[dict], Field(description="Questionnaire details", default=None)]
     face_match: Annotated[
         Optional[FaceMatchDetails],
         Field(description="Face match verification details", default=None),
