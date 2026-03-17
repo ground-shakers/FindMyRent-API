@@ -1190,13 +1190,14 @@ Go to **Manage Jenkins → Credentials → System → Global credentials → Add
 |---|---|---|---|
 | `github-pat` | Username with password | GitHub username + Personal Access Token | Repo checkout + branch scanning |
 | `mongodb-atlas-uri` | Secret text | `mongodb+srv://user:pass@cluster.mongodb.net/findmyrent` | Test stage (if tests need DB) |
-| `mail-username` | Secret text | `985dc4001@smtp-brevo.com` | Email notifications |
-| `mail-password` | Secret text | Your Brevo SMTP password | Email notifications |
 | `mail-to` | Secret text | Your recipient email | Email notifications |
 | `mail-from` | Secret text | `dev@ground-shakers.xyz` | Email sender |
 | `github-webhook-secret` | Secret text | Random string (same as webhook config) | Webhook validation |
 
-> **Note:** No `ec2-ssh-key` or `app-ec2-host` credentials needed — Jenkins runs on the same machine as the app.
+> **Note:** SMTP credentials (`mail-username`, `mail-password`) are configured globally in Jenkins
+> (see [Section 6.5](#65-configure-smtp-for-email-notifications)), not as pipeline credentials.
+> The `to` and `from` fields use `'$MAIL_TO'` (single quotes) in the Jenkinsfile to avoid
+> Groovy string interpolation of secrets — `emailext` reads the environment variable directly.
 
 ---
 
@@ -1286,10 +1287,10 @@ pipeline {
                 sh '''
                     . venv/bin/activate
                     echo "Running critical linting checks..."
-                    flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+                    flake8 . --exclude=venv --count --select=E9,F63,F7,F82 --show-source --statistics
 
                     echo "Running style checks (non-blocking)..."
-                    flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+                    flake8 . --exclude=venv --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
                 '''
             }
         }
@@ -1342,21 +1343,23 @@ pipeline {
 
     // ─────────────────────────────────────────────────
     // POST: Notifications
+    // IMPORTANT: Use single quotes for 'to' and 'from'
+    // to avoid Groovy string interpolation of secrets.
+    // withCredentials sets MAIL_TO/MAIL_FROM as env vars;
+    // emailext reads them from the environment directly.
     // ─────────────────────────────────────────────────
     post {
         success {
             script {
                 if (env.BRANCH_NAME == 'master') {
                     withCredentials([
-                        string(credentialsId: 'mail-username',  variable: 'MAIL_USER'),
-                        string(credentialsId: 'mail-password',  variable: 'MAIL_PASS'),
-                        string(credentialsId: 'mail-to',        variable: 'MAIL_TO'),
-                        string(credentialsId: 'mail-from',      variable: 'MAIL_FROM')
+                        string(credentialsId: 'mail-to',   variable: 'MAIL_TO'),
+                        string(credentialsId: 'mail-from', variable: 'MAIL_FROM')
                     ]) {
                         emailext(
                             subject: "✅ Deployment Successful — ${env.APP_NAME} #${env.BUILD_NUMBER}",
-                            to: "${MAIL_TO}",
-                            from: "${MAIL_FROM}",
+                            to: '$MAIL_TO',
+                            from: '$MAIL_FROM',
                             body: """
 Deployment completed successfully!
 
@@ -1381,8 +1384,8 @@ Jenkins build: ${env.BUILD_URL}
             ]) {
                 emailext(
                     subject: "❌ Build Failed — ${env.APP_NAME} #${env.BUILD_NUMBER}",
-                    to: "${MAIL_TO}",
-                    from: "${MAIL_FROM}",
+                    to: '$MAIL_TO',
+                    from: '$MAIL_FROM',
                     body: """
 Build or deployment FAILED.
 

@@ -52,10 +52,10 @@ pipeline {
                 sh '''
                     . venv/bin/activate
                     echo "Running critical linting checks..."
-                    flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+                    flake8 . --exclude=venv --count --select=E9,F63,F7,F82 --show-source --statistics
 
                     echo "Running style checks (non-blocking)..."
-                    flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+                    flake8 . --exclude=venv --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
                 '''
             }
         }
@@ -108,21 +108,23 @@ pipeline {
 
     // ─────────────────────────────────────────────────
     // POST: Notifications
+    // IMPORTANT: Use single quotes for 'to' and 'from'
+    // to avoid Groovy string interpolation of secrets.
+    // withCredentials sets MAIL_TO/MAIL_FROM as env vars;
+    // emailext reads them from the environment directly.
     // ─────────────────────────────────────────────────
     post {
         success {
             script {
                 if (env.BRANCH_NAME == 'master') {
                     withCredentials([
-                        string(credentialsId: 'mail-username',  variable: 'MAIL_USER'),
-                        string(credentialsId: 'mail-password',  variable: 'MAIL_PASS'),
-                        string(credentialsId: 'mail-to',        variable: 'MAIL_TO'),
-                        string(credentialsId: 'mail-from',      variable: 'MAIL_FROM')
+                        string(credentialsId: 'mail-to',   variable: 'MAIL_TO'),
+                        string(credentialsId: 'mail-from', variable: 'MAIL_FROM')
                     ]) {
                         emailext(
                             subject: "✅ Deployment Successful — ${env.APP_NAME} #${env.BUILD_NUMBER}",
-                            to: "${MAIL_TO}",
-                            from: "${MAIL_FROM}",
+                            to: '$MAIL_TO',
+                            from: '$MAIL_FROM',
                             body: """
 Deployment completed successfully!
 
@@ -147,8 +149,8 @@ Jenkins build: ${env.BUILD_URL}
             ]) {
                 emailext(
                     subject: "❌ Build Failed — ${env.APP_NAME} #${env.BUILD_NUMBER}",
-                    to: "${MAIL_TO}",
-                    from: "${MAIL_FROM}",
+                    to: '$MAIL_TO',
+                    from: '$MAIL_FROM',
                     body: """
 Build or deployment FAILED.
 
