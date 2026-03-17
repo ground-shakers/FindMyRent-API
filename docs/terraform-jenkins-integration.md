@@ -31,6 +31,7 @@
    - [Dockerfile](#462-dockerfile)
    - [Outputs](#47-outputs)
    - [Running Terraform](#48-running-terraform)
+   - [Initial Server Setup](#49-initial-server-setup-one-time-after-first-apply)
 5. [Phase 2 — DNS & HTTPS Setup](#5-phase-2--dns--https-setup)
    - [DNS Configuration](#51-dns-configuration)
    - [Nginx & Let's Encrypt](#52-nginx--lets-encrypt)
@@ -1000,6 +1001,91 @@ terraform apply "tfplan-destroy"
 
 ---
 
+### 4.9 Initial Server Setup (One-Time, After First Apply)
+
+After `terraform apply` completes and the EC2 instance is running, SSH in and perform these
+one-time setup steps. The user-data script installs all software, but it cannot clone your
+private repo or create your `.env` file — those require your credentials.
+
+**Step 1 — SSH into the server:**
+
+```bash
+# Use the SSH command from terraform output
+ssh -i ~/.ssh/findmyrent ubuntu@<SERVER_IP>
+```
+
+**Step 2 — Wait for user-data to finish (first boot only):**
+
+```bash
+# Check if cloud-init has completed
+cloud-init status
+# Should say: "status: done"
+
+# If it says "status: running", wait and check again in a minute.
+# You can watch the log live:
+tail -f /var/log/cloud-init-output.log
+```
+
+**Step 3 — Clone the repository:**
+
+```bash
+# Clone your repo into the deploy directory
+git clone https://github.com/ground-shakers/FindMyRent-API.git /home/ubuntu/FindMyRent-API
+```
+
+> If your repo is private, you'll need to authenticate. Options:
+>
+> - Use an HTTPS URL with a GitHub PAT: `git clone https://<PAT>@github.com/ground-shakers/FindMyRent-API.git /home/ubuntu/FindMyRent-API`
+> - Or set up an SSH key for the `ubuntu` user and use the SSH URL.
+
+**Step 4 — Create the `.env` file:**
+
+```bash
+nano /home/ubuntu/.env
+```
+
+Paste your environment variables:
+
+```bash
+# MongoDB Atlas
+MONGODB_URI=mongodb+srv://<user>:<password>@<cluster>.mongodb.net/findmyrent?retryWrites=true&w=majority
+
+# Redis (local — accessible via localhost because of --network host)
+REDIS_URL=redis://localhost:6379
+
+# Application secrets
+SECRET_KEY=<your-secret-key>
+# ... other env vars your app needs
+```
+
+Save and exit (`Ctrl+X`, `Y`, `Enter` in nano).
+
+**Step 5 — Verify Docker is running:**
+
+```bash
+docker --version
+# Should show: Docker version 2x.x.x
+
+sudo systemctl status docker
+# Should show: active (running)
+```
+
+**Step 6 — Verify Jenkins is running:**
+
+```bash
+sudo systemctl status jenkins
+# Should show: active (running)
+
+sudo ss -tlnp | grep 8080
+# Should show: 127.0.0.1:8080
+```
+
+> After these steps, the server is ready for Jenkins to deploy to. The first successful
+> Jenkins build will run `deploy.sh`, which builds the Docker image from the cloned repo,
+> starts the container, and makes the API live at `https://ground-shakers.xyz`.
+
+---
+
 ## 5. Phase 2 — DNS & HTTPS Setup
 
 This phase must happen **after** `terraform apply` (you need the Elastic IP) and **before** Jenkins setup (so the webhook URL is ready).
@@ -1851,6 +1937,16 @@ sudo ss -tlnp | grep 8080
 ```
 
 ### Jenkins can't deploy the app (permission denied)
+
+**`cd: /home/ubuntu/FindMyRent-API: No such file or directory`**
+
+The repo hasn't been cloned to the server yet. This must be done once manually after the first
+`terraform apply` — see [Section 4.9](#49-initial-server-setup-one-time-after-first-apply).
+
+```bash
+# Clone the repo (run as ubuntu user)
+git clone https://github.com/ground-shakers/FindMyRent-API.git /home/ubuntu/FindMyRent-API
+```
 
 **`cd: /home/ubuntu/FindMyRent-API: Permission denied`**
 
