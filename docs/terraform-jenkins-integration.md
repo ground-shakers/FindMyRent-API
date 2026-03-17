@@ -40,8 +40,9 @@
    - [Initial Jenkins Setup](#62-initial-jenkins-setup)
    - [Required Jenkins Plugins](#63-required-jenkins-plugins)
    - [Configure Credentials in Jenkins](#64-configure-credentials-in-jenkins)
-   - [Jenkinsfile](#65-jenkinsfile)
-   - [Multibranch Pipeline Setup](#66-multibranch-pipeline-setup)
+   - [Configure SMTP for Email Notifications](#65-configure-smtp-for-email-notifications)
+   - [Jenkinsfile](#66-jenkinsfile)
+   - [Multibranch Pipeline Setup](#67-multibranch-pipeline-setup)
 7. [Phase 4 — GitHub Integration](#7-phase-4--github-integration)
    - [GitHub Webhook to Jenkins (via nginx)](#71-github-webhook-to-jenkins-via-nginx)
    - [Updated GitHub Actions (Optional Bridge)](#72-updated-github-actions-optional-bridge)
@@ -716,12 +717,17 @@ jenkins ALL=(ALL) NOPASSWD: /usr/bin/docker *
 EOF
 
 # ============================================================
-# Configure nginx — initial HTTP-only config
-# (HTTPS is added after DNS is pointed and certbot runs)
+# Configure nginx — write directly into 'default' site config
+# IMPORTANT: We overwrite the default config rather than
+# creating a separate file, because certbot --nginx modifies
+# the config it finds. Writing to a separate file causes
+# certbot to modify 'default' instead, leaving the proxy
+# rules missing and webhooks/API returning 404.
 # ============================================================
-cat > /etc/nginx/sites-available/findmyrent <<'NGINX'
+cat > /etc/nginx/sites-available/default <<'NGINX'
 server {
-    listen 80;
+    listen 80 default_server;
+    listen [::]:80 default_server;
     server_name ground-shakers.xyz;
 
     # Let's Encrypt validation
@@ -749,8 +755,6 @@ server {
 }
 NGINX
 
-ln -sf /etc/nginx/sites-available/findmyrent /etc/nginx/sites-enabled/
-rm -f /etc/nginx/sites-enabled/default
 nginx -t && systemctl reload nginx
 
 echo "Combined server bootstrap complete"
@@ -1035,16 +1039,23 @@ sudo certbot --nginx -d ground-shakers.xyz \
 Certbot will:
 
 - Obtain a Let's Encrypt certificate for `ground-shakers.xyz`.
-- Modify `/etc/nginx/sites-available/findmyrent` to add a `listen 443 ssl` block with certificate paths.
+- Modify `/etc/nginx/sites-available/default` to add a `listen 443 ssl` block with certificate paths.
 - Add an automatic HTTP→HTTPS redirect on port 80.
 - Set up auto-renewal via a systemd timer (certificates renew automatically every ~60 days).
+
+> **Why we use the `default` config file:** Certbot's `--nginx` plugin scans for `server_name`
+> directives in nginx configs. If you write proxy rules in a separate file (e.g. `findmyrent`)
+> but certbot modifies `default`, your proxy rules are lost and the API / webhooks return 404.
+> Writing everything into `default` ensures certbot modifies the file that already has the
+> proxy rules.
 
 After certbot runs, the nginx config will look approximately like this (certbot modifies it automatically):
 
 ```nginx
-# /etc/nginx/sites-available/findmyrent (after certbot)
+# /etc/nginx/sites-available/default (after certbot)
 server {
-    listen 80;
+    listen 80 default_server;
+    listen [::]:80 default_server;
     server_name ground-shakers.xyz;
 
     # Certbot adds: redirect to HTTPS
@@ -1053,6 +1064,7 @@ server {
 
 server {
     listen 443 ssl;
+    listen [::]:443 ssl;
     server_name ground-shakers.xyz;
 
     # Certbot adds these certificate paths
@@ -1061,7 +1073,7 @@ server {
     include /etc/letsencrypt/options-ssl-nginx.conf;
     ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
 
-    # API reverse proxy
+    # API reverse proxy (preserved from original config)
     location / {
         proxy_pass http://127.0.0.1:8000;
         proxy_set_header Host $host;
@@ -1070,7 +1082,7 @@ server {
         proxy_set_header X-Forwarded-Proto https;
     }
 
-    # GitHub webhook → Jenkins (proxied locally)
+    # GitHub webhook → Jenkins (preserved from original config)
     location /github-webhook/ {
         proxy_pass http://127.0.0.1:8080/github-webhook/;
         proxy_set_header Host $host;
@@ -1188,7 +1200,34 @@ Go to **Manage Jenkins → Credentials → System → Global credentials → Add
 
 ---
 
-### 6.5 Jenkinsfile
+### 6.5 Configure SMTP for Email Notifications
+
+The `emailext` plugin does **not** support `smtpHost` or `smtpPort` as inline parameters in the Jenkinsfile — SMTP must be configured globally in Jenkins settings.
+
+1. Open Jenkins via SSH tunnel (`http://localhost:8080`)
+2. Go to **Manage Jenkins → System**
+3. Scroll down to **Extended E-mail Notification** and configure:
+   - **SMTP server:** `smtp-relay.brevo.com`
+   - **SMTP port:** `587`
+   - **Credentials:** click **Add** → select **Jenkins**, then:
+     - Kind: **Username with password**
+     - Username: `985dc4001@smtp-brevo.com` (your Brevo SMTP login)
+     - Password: your Brevo SMTP password
+     - ID: `brevo-smtp`
+   - Select the `brevo-smtp` credential from the dropdown
+   - **Use TLS:** tick the checkbox
+4. Optionally scroll to **Default Recipients** and enter your email
+5. Click **Save**
+
+> **Why not in the Jenkinsfile?** Jenkins' `emailext` step reads SMTP settings from the global
+> config. Passing `smtpHost` or `smtpPort` in the Jenkinsfile causes a compilation error:
+> `Invalid parameter "smtpHost"`. The Jenkinsfile only specifies `to`, `from`, `subject`, and `body`.
+
+---
+
+### 6.6 Jenkinsfile
+
+**File to create/update:** `Jenkinsfile` (in the root of `FindMyRent/`)
 
 Create `Jenkinsfile` in the root of `FindMyRent/`:
 
@@ -1318,8 +1357,6 @@ pipeline {
                             subject: "✅ Deployment Successful — ${env.APP_NAME} #${env.BUILD_NUMBER}",
                             to: "${MAIL_TO}",
                             from: "${MAIL_FROM}",
-                            smtpHost: 'smtp-relay.brevo.com',
-                            smtpPort: '587',
                             body: """
 Deployment completed successfully!
 
@@ -1346,8 +1383,6 @@ Jenkins build: ${env.BUILD_URL}
                     subject: "❌ Build Failed — ${env.APP_NAME} #${env.BUILD_NUMBER}",
                     to: "${MAIL_TO}",
                     from: "${MAIL_FROM}",
-                    smtpHost: 'smtp-relay.brevo.com',
-                    smtpPort: '587',
                     body: """
 Build or deployment FAILED.
 
@@ -1374,7 +1409,7 @@ Check console output: ${env.BUILD_URL}console
 
 ---
 
-### 6.6 Multibranch Pipeline Setup
+### 6.7 Multibranch Pipeline Setup
 
 #### Step 1 — Create a GitHub Personal Access Token
 
@@ -1435,14 +1470,20 @@ The webhook reaches Jenkins through the nginx reverse proxy on port 443 — not 
    - **Secret:** (same value stored as `github-webhook-secret` credential in Jenkins)
    - **Events:** Select `Just the push event` and `Pull requests`
 3. Click **Add webhook**
+4. GitHub will send a test ping — check that it shows a green tick (200 response)
 
-In Jenkins (via SSH tunnel), go to your pipeline job → **Configure** → **Scan Multibranch Pipeline Triggers** → tick **GitHub hook trigger for GITScm polling**.
+> **No extra Jenkins configuration needed.** For Multibranch Pipelines, Jenkins automatically
+> responds to webhook pings and triggers a branch scan. The "GitHub hook trigger for GITScm
+> polling" checkbox exists on regular Pipeline jobs but is not present on Multibranch Pipelines.
+> The 1-minute polling you configured in [Section 6.7](#67-multibranch-pipeline-setup) acts as
+> a fallback if a webhook ever fails to deliver.
 
 > **How it works:**
 >
 > 1. GitHub sends a POST to `https://ground-shakers.xyz/github-webhook/`
 > 2. nginx terminates TLS and proxies the request to `http://127.0.0.1:8080/github-webhook/`
-> 3. Jenkins receives the webhook and triggers the build
+> 3. Jenkins receives the webhook and triggers a branch scan
+> 4. If the branch has a `Jenkinsfile`, the pipeline runs
 >
 > No public port 8080 is needed. The webhook uses the same HTTPS port (443) as the API.
 
@@ -1858,19 +1899,86 @@ curl -I https://ground-shakers.xyz
 
 ### GitHub webhook not triggering
 
-```bash
-# Check that nginx is proxying /github-webhook/ correctly:
-curl -X POST http://127.0.0.1:8080/github-webhook/ -I
-# Should return 200 or 302 (not 404)
+**Symptom: GitHub shows 404 on webhook delivery**
 
+This usually means nginx is missing the proxy rule for `/github-webhook/`. Check:
+
+```bash
+# 1. Verify Jenkins responds to the webhook path directly:
+curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:8080/github-webhook/
+# Should return 400 (empty payload) — NOT 404. 400 means Jenkins is listening.
+
+# 2. Check your nginx config has the proxy rule:
+sudo grep -A5 "github-webhook" /etc/nginx/sites-available/default
+# Should show: proxy_pass http://127.0.0.1:8080/github-webhook/
+
+# 3. If the proxy rule is missing, certbot likely overwrote it. Fix:
+sudo tee /etc/nginx/sites-available/default > /dev/null <<'NGINX'
+# HTTP → HTTPS redirect
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name ground-shakers.xyz;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/html;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# HTTPS server
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name ground-shakers.xyz;
+
+    ssl_certificate /etc/letsencrypt/live/ground-shakers.xyz/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/ground-shakers.xyz/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+    }
+
+    location /github-webhook/ {
+        proxy_pass http://127.0.0.1:8080/github-webhook/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+    }
+}
+NGINX
+
+sudo nginx -t && sudo systemctl reload nginx
+
+# 4. Test the full chain via HTTPS:
+curl -s -o /dev/null -w "%{http_code}" -X POST https://ground-shakers.xyz/github-webhook/
+# Should return 400 (success — Jenkins received the empty payload)
+
+# 5. Redeliver from GitHub:
+# GitHub → Settings → Webhooks → Recent Deliveries → Redeliver
+```
+
+**Symptom: Webhook delivers but builds don't trigger**
+
+```bash
 # Check nginx access log for webhook hits:
 sudo grep "github-webhook" /var/log/nginx/access.log
 
 # Check Jenkins system log:
 # Via SSH tunnel → http://localhost:8080/manage/systemLog
 
-# In GitHub → Settings → Webhooks → check "Recent Deliveries" for errors
-# The webhook URL should be: https://ground-shakers.xyz/github-webhook/
+# Ensure the webhook URL in GitHub is exactly:
+# https://ground-shakers.xyz/github-webhook/  (trailing slash matters)
 ```
 
 ### Terraform state lock error
