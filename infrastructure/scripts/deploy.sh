@@ -8,8 +8,7 @@ APP_DIR="/home/ubuntu/FindMyRent-API"
 CONTAINER_NAME="findmyrent-api"
 IMAGE_NAME="findmyrent-api"
 ENV_FILE="/home/ubuntu/.env"
-HEALTH_URL="http://localhost:8000/health"
-FALLBACK_URL="http://localhost:8000/"
+HEALTH_URL="http://localhost:8000/docs"
 
 # Use provided commit SHA or default to latest master
 COMMIT="${1:-latest}"
@@ -40,7 +39,6 @@ sleep 5
 
 echo "==> Health check..."
 curl -sf "$HEALTH_URL" \
-    || curl -sf "$FALLBACK_URL" \
     || (echo "Health check failed! Rolling back..." && \
         docker stop "$CONTAINER_NAME" && \
         docker rm "$CONTAINER_NAME" && \

@@ -722,6 +722,10 @@ cat > /etc/sudoers.d/jenkins-deploy <<'EOF'
 jenkins ALL=(ALL) NOPASSWD: /usr/bin/docker *
 EOF
 
+# Mark the app directory as a safe git directory for the jenkins user
+# (jenkins runs git in a directory owned by ubuntu — git rejects this by default)
+sudo -u jenkins git config --global --add safe.directory /home/ubuntu/FindMyRent-API
+
 # ============================================================
 # Configure nginx — write directly into 'default' site config
 # IMPORTANT: We overwrite the default config rather than
@@ -825,8 +829,7 @@ APP_DIR="/home/ubuntu/FindMyRent-API"
 CONTAINER_NAME="findmyrent-api"
 IMAGE_NAME="findmyrent-api"
 ENV_FILE="/home/ubuntu/.env"
-HEALTH_URL="http://localhost:8000/health"
-FALLBACK_URL="http://localhost:8000/"
+HEALTH_URL="http://localhost:8000/docs"
 
 # Use provided commit SHA or default to latest master
 COMMIT="${1:-latest}"
@@ -857,7 +860,6 @@ sleep 5
 
 echo "==> Health check..."
 curl -sf "$HEALTH_URL" \
-    || curl -sf "$FALLBACK_URL" \
     || (echo "Health check failed! Rolling back..." && \
         docker stop "$CONTAINER_NAME" && \
         docker rm "$CONTAINER_NAME" && \
@@ -1038,7 +1040,16 @@ git clone https://github.com/ground-shakers/FindMyRent-API.git /home/ubuntu/Find
 > - Use an HTTPS URL with a GitHub PAT: `git clone https://<PAT>@github.com/ground-shakers/FindMyRent-API.git /home/ubuntu/FindMyRent-API`
 > - Or set up an SSH key for the `ubuntu` user and use the SSH URL.
 
-**Step 4 — Create the `.env` file:**
+**Step 4 — Mark the repo as safe for the Jenkins user:**
+
+Jenkins runs as the `jenkins` user but the repo is owned by `ubuntu`. Git rejects this
+by default. Tell git it's safe:
+
+```bash
+sudo -u jenkins git config --global --add safe.directory /home/ubuntu/FindMyRent-API
+```
+
+**Step 5 — Create the `.env` file:**
 
 ```bash
 nano /home/ubuntu/.env
@@ -1060,7 +1071,7 @@ SECRET_KEY=<your-secret-key>
 
 Save and exit (`Ctrl+X`, `Y`, `Enter` in nano).
 
-**Step 5 — Verify Docker is running:**
+**Step 6 — Verify Docker is running:**
 
 ```bash
 docker --version
@@ -1070,7 +1081,7 @@ sudo systemctl status docker
 # Should show: active (running)
 ```
 
-**Step 6 — Verify Jenkins is running:**
+**Step 7 — Verify Jenkins is running:**
 
 ```bash
 sudo systemctl status jenkins
@@ -1750,8 +1761,7 @@ stage('Rollback') {
                 "findmyrent-api:${PREV_IMAGE}"
 
             sleep 5
-            curl -sf http://localhost:8000/health \
-                || curl -sf http://localhost:8000/ \
+            curl -sf http://localhost:8000/docs \
                 || (echo "Rollback health check failed!" && exit 1)
 
             echo "==> Rollback complete"
@@ -1965,6 +1975,15 @@ sudo chown -R ubuntu:ubuntu /home/ubuntu/FindMyRent-API
 
 # Restart Jenkins so the group change takes effect
 sudo systemctl restart jenkins
+```
+
+**`fatal: detected dubious ownership in repository at '/home/ubuntu/FindMyRent-API'`**
+
+Git refuses to run in a directory owned by a different user (the repo is owned by `ubuntu`
+but Jenkins runs as `jenkins`). Fix:
+
+```bash
+sudo -u jenkins git config --global --add safe.directory /home/ubuntu/FindMyRent-API
 ```
 
 **Docker permission denied**
