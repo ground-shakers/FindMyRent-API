@@ -34,16 +34,24 @@ docker run -d \
     --network host \
     "${IMAGE_NAME}:latest"
 
-echo "==> Waiting for container to stabilise..."
-sleep 5
-
-echo "==> Health check..."
-curl -sf "$HEALTH_URL" \
-    || (echo "Health check failed! Rolling back..." && \
-        docker stop "$CONTAINER_NAME" && \
-        docker rm "$CONTAINER_NAME" && \
-        echo "Container stopped. Check logs: docker logs ${CONTAINER_NAME}" && \
-        exit 1)
+echo "==> Health check (waiting up to 30s for app to start)..."
+RETRIES=6
+DELAY=5
+for i in $(seq 1 $RETRIES); do
+    if curl -sf "$HEALTH_URL" > /dev/null 2>&1; then
+        echo "==> Health check passed on attempt $i"
+        break
+    fi
+    if [ "$i" -eq "$RETRIES" ]; then
+        echo "Health check failed after ${RETRIES} attempts! Rolling back..."
+        docker logs "$CONTAINER_NAME" 2>&1 | tail -30
+        docker stop "$CONTAINER_NAME"
+        docker rm "$CONTAINER_NAME"
+        exit 1
+    fi
+    echo "    Attempt $i/$RETRIES failed, retrying in ${DELAY}s..."
+    sleep $DELAY
+done
 
 echo "==> Pruning old images..."
 docker image prune -f
