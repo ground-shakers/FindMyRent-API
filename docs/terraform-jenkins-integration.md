@@ -703,13 +703,18 @@ systemctl start jenkins
 # ============================================================
 useradd -m -s /bin/bash ubuntu || true
 mkdir -p /home/ubuntu/FindMyRent-API
-chown ubuntu:ubuntu /home/ubuntu/FindMyRent-API
+chown -R ubuntu:ubuntu /home/ubuntu/FindMyRent-API
+
+# Make /home/ubuntu traversable by the jenkins user (needed for deploy.sh)
+chmod 755 /home/ubuntu
 
 # ============================================================
 # Add jenkins and ubuntu users to docker group
+# Jenkins also needs to be in the ubuntu group for deploy access
 # ============================================================
 usermod -aG docker jenkins
 usermod -aG docker ubuntu
+usermod -aG ubuntu jenkins
 
 # Allow jenkins to manage Docker containers without sudo
 cat > /etc/sudoers.d/jenkins-deploy <<'EOF'
@@ -1196,8 +1201,9 @@ Go to **Manage Jenkins → Credentials → System → Global credentials → Add
 
 > **Note:** SMTP credentials (`mail-username`, `mail-password`) are configured globally in Jenkins
 > (see [Section 6.5](#65-configure-smtp-for-email-notifications)), not as pipeline credentials.
-> The `to` and `from` fields use `'$MAIL_TO'` (single quotes) in the Jenkinsfile to avoid
-> Groovy string interpolation of secrets — `emailext` reads the environment variable directly.
+> The `to` and `from` fields use `env.MAIL_TO` and `env.MAIL_FROM` in the Jenkinsfile —
+> `withCredentials` sets them as environment variables, and `env.VARIABLE` reads them without
+> Groovy GString interpolation (avoiding the secret exposure warning).
 
 ---
 
@@ -1343,10 +1349,8 @@ pipeline {
 
     // ─────────────────────────────────────────────────
     // POST: Notifications
-    // IMPORTANT: Use single quotes for 'to' and 'from'
-    // to avoid Groovy string interpolation of secrets.
-    // withCredentials sets MAIL_TO/MAIL_FROM as env vars;
-    // emailext reads them from the environment directly.
+    // MAIL_TO and MAIL_FROM are set in the environment
+    // block or read via withCredentials + env.VARIABLE
     // ─────────────────────────────────────────────────
     post {
         success {
@@ -1358,8 +1362,8 @@ pipeline {
                     ]) {
                         emailext(
                             subject: "✅ Deployment Successful — ${env.APP_NAME} #${env.BUILD_NUMBER}",
-                            to: '$MAIL_TO',
-                            from: '$MAIL_FROM',
+                            to: env.MAIL_TO,
+                            from: env.MAIL_FROM,
                             body: """
 Deployment completed successfully!
 
@@ -1384,8 +1388,8 @@ Jenkins build: ${env.BUILD_URL}
             ]) {
                 emailext(
                     subject: "❌ Build Failed — ${env.APP_NAME} #${env.BUILD_NUMBER}",
-                    to: '$MAIL_TO',
-                    from: '$MAIL_FROM',
+                    to: env.MAIL_TO,
+                    from: env.MAIL_FROM,
                     body: """
 Build or deployment FAILED.
 
@@ -1847,6 +1851,27 @@ sudo ss -tlnp | grep 8080
 ```
 
 ### Jenkins can't deploy the app (permission denied)
+
+**`cd: /home/ubuntu/FindMyRent-API: Permission denied`**
+
+The `jenkins` user can't access `/home/ubuntu` because the home directory defaults to `700` (owner-only).
+Fix:
+
+```bash
+# Make /home/ubuntu traversable
+sudo chmod 755 /home/ubuntu
+
+# Add jenkins to the ubuntu group
+sudo usermod -aG ubuntu jenkins
+
+# Ensure the app directory is owned by ubuntu
+sudo chown -R ubuntu:ubuntu /home/ubuntu/FindMyRent-API
+
+# Restart Jenkins so the group change takes effect
+sudo systemctl restart jenkins
+```
+
+**Docker permission denied**
 
 ```bash
 # Verify jenkins user is in the docker group:

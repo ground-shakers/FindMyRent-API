@@ -108,10 +108,8 @@ pipeline {
 
     // ─────────────────────────────────────────────────
     // POST: Notifications
-    // IMPORTANT: Use single quotes for 'to' and 'from'
-    // to avoid Groovy string interpolation of secrets.
-    // withCredentials sets MAIL_TO/MAIL_FROM as env vars;
-    // emailext reads them from the environment directly.
+    // MAIL_TO and MAIL_FROM are set in the environment
+    // block or read via withCredentials + env.VARIABLE
     // ─────────────────────────────────────────────────
     post {
         success {
@@ -123,8 +121,8 @@ pipeline {
                     ]) {
                         emailext(
                             subject: "✅ Deployment Successful — ${env.APP_NAME} #${env.BUILD_NUMBER}",
-                            to: '$MAIL_TO',
-                            from: '$MAIL_FROM',
+                            to: env.MAIL_TO,
+                            from: env.MAIL_FROM,
                             body: """
 Deployment completed successfully!
 
@@ -149,8 +147,8 @@ Jenkins build: ${env.BUILD_URL}
             ]) {
                 emailext(
                     subject: "❌ Build Failed — ${env.APP_NAME} #${env.BUILD_NUMBER}",
-                    to: '$MAIL_TO',
-                    from: '$MAIL_FROM',
+                    to: env.MAIL_TO,
+                    from: env.MAIL_FROM,
                     body: """
 Build or deployment FAILED.
 
