@@ -45,7 +45,13 @@ from schema.security import (
     ResetPasswordResponse,
 )
 
-from typing import Annotated
+from starlette.requests import Request
+
+from fastapi_sso.sso.google import GoogleSSO
+
+from dotenv import load_dotenv
+
+load_dotenv()  # Load environment variables from .env file
 
 
 # Redis configuration
@@ -68,6 +74,12 @@ class AuthService:
         self.password_reset_service = get_password_reset_service()
         self.landlord_repo = get_landlord_repository()
         self.permissions_repo = get_permissions_repository()
+        self.google_sso = GoogleSSO(
+            client_id=os.getenv("GOOGLE_SSO_CLIENT_ID"),
+            client_secret=os.getenv("GOOGLE_SSO_CLIENT_SECRET"),
+            redirect_uri=os.getenv("GOOGLE_SSO_REDIRECT_URI"),
+            allow_insecure_http=True,
+        )
 
     async def resend_verification_code(
         self, payload: EmailVerificationRequest, background_tasks: BackgroundTasks
@@ -254,6 +266,21 @@ class AuthService:
                     "detail": "An unexpected error occurred during login. Please try again later."
                 },
             )
+            
+            
+    async def login_with_google(self):
+        """Initiates the Google SSO login flow."""
+        async with self.google_sso:
+            return await self.google_sso.get_login_redirect()
+
+    async def google_callback(self, request: Request):
+        """Handles the callback from Google SSO after user authentication."""
+        async with self.google_sso:
+            user_info = await self.google_sso.verify_and_process(request)
+            # Here you would typically find or create a user in your database
+            # and then generate access and refresh tokens for them.
+            # For simplicity, we'll just return the user info.
+            return user_info
 
     async def refresh_access_token(
         self, payload: RefreshTokenRequest, secure_service: SecureRefreshTokenService

@@ -25,3 +25,4 @@ pytest-asyncio
 pytest-cov
 mongomock-motor
 firebase-admin
+fastapi-sso==0.21.0

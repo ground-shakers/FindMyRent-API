@@ -8,7 +8,6 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from middlewares import SecurityHeadersMiddleware
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
@@ -72,7 +71,6 @@ app = FastAPI(
     swagger_ui_parameters={"defaultModelsExpandDepth": -1},  # Hide schemas section
 )
 
-app.add_middleware(HTTPSRedirectMiddleware)
 app.add_middleware(ProxyHeadersMiddleware, trusted_hosts=["127.0.0.1"])
 app.add_middleware(
     IdempotencyMiddleware,

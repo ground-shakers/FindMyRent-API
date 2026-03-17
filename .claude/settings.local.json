@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -d /c/Users/noble/Desktop/FindMyRent/*/)",
+      "Bash(find /c/Users/noble/Desktop/FindMyRent -maxdepth 2 -type d -not -path */.* -not -path */__pycache__* -not -path */.venv*)",
+      "Bash(grep -E \"\\\\.\\(sh|bash|ps1|yml|yaml|json|toml|cfg|ini|conf\\)$\")"
+    ]
+  }
+}

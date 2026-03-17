@@ -4,6 +4,8 @@ Auth router for handling user authentication and authorization related endpoints
 
 import logfire
 
+from starlette.requests import Request
+
 from fastapi import HTTPException, status, APIRouter, Depends, BackgroundTasks
 from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
@@ -236,6 +238,21 @@ async def refresh_access_token(
     - If token reuse is detected, all user sessions are terminated for security
     """
     return await auth_service.refresh_access_token(payload, secure_service)
+
+@router.get("/google/login")
+async def login_with_google(
+    auth_service: Annotated[AuthService, Depends(get_auth_service)],
+):
+    """Initiates the Google SSO login flow."""
+    return await auth_service.login_with_google()
+
+@router.get("/google/callback")
+async def google_sso_callback(
+    request: Request,
+    auth_service: Annotated[AuthService, Depends(get_auth_service)],
+):
+    """Handles the callback from Google SSO after user authentication."""
+    return await auth_service.google_callback(request)
 
 
 @router.post("/logout")

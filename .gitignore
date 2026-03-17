@@ -19,6 +19,17 @@ pytest.ini
 # Firebase configs
 firebaseServiceAccountKey.json
 
+#Google
+google-sso-client-secrets.json
+
+#Terraform
+infrastructure/terraform/terraform.tfvars
+infrastructure/terraform/.terraform/
+infrastructure/terraform/.terraform.lock.hcl
+infrastructure/terraform/tfplan
+infrastructure/terraform/*.tfstate
+infrastructure/terraform/*.tfstate.backup
+    
 # IDE files
 .vscode/
 
