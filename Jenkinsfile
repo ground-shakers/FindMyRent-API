@@ -123,8 +123,6 @@ pipeline {
                             subject: "✅ Deployment Successful — ${env.APP_NAME} #${env.BUILD_NUMBER}",
                             to: "${MAIL_TO}",
                             from: "${MAIL_FROM}",
-                            smtpHost: 'smtp-relay.brevo.com',
-                            smtpPort: '587',
                             body: """
 Deployment completed successfully!
 
@@ -151,8 +149,6 @@ Jenkins build: ${env.BUILD_URL}
                     subject: "❌ Build Failed — ${env.APP_NAME} #${env.BUILD_NUMBER}",
                     to: "${MAIL_TO}",
                     from: "${MAIL_FROM}",
-                    smtpHost: 'smtp-relay.brevo.com',
-                    smtpPort: '587',
                     body: """
 Build or deployment FAILED.
 
